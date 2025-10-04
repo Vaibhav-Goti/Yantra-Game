@@ -253,7 +253,7 @@ function AdminManagement() {
                   totalPages={data.pagination?.totalPages || 1}
                   onPageChange={(p) => setPage(p)}
                   limit={limit}
-                  onLimitChange={(newLimit) => setLimit(newLimit)}
+                  onLimitChange={(newLimit) => {setLimit(newLimit); setPage(1)}}
                   totalItems={data.pagination?.totalItems || data.count}
                 />
               </>

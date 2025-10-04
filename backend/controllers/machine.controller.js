@@ -1,33 +1,60 @@
+import mongoose from "mongoose";
 import catchAsyncError from "../middlewares/catchAsyncError.js";
 import Machine from "../modals/machine.modal.js";
 import ErrorHandler from "../utils/errorHandler.js";
+import TimeFrame from "../modals/timeFrame.modal.js";
 
 // Create new machine
 export const createMachine = catchAsyncError(async (req, res, next) => {
     const { machineName, machineNumber, status, location, description, depositAmount } = req.body;
 
-    // Check if machine number already exists
-    const existingMachine = await Machine.findOne({ machineNumber });
-    if (existingMachine) {
-        return next(new ErrorHandler('Machine number already exists', 400));
+    // start transaction
+    const transaction = await mongoose.startSession();
+    try {
+        transaction.startTransaction();
+        // Check if machine number already exists
+        const existingMachine = await Machine.findOne({ machineNumber }).session(transaction);
+        if (existingMachine) {
+            throw new ErrorHandler('Machine number already exists', 400);
+        }
+
+        const machine = new Machine({
+            machineName,
+            machineNumber,
+            status: status || 'Active',
+            location: location ? location : "",
+            description: description ? description : "",
+            depositAmount: depositAmount || 0
+        });
+
+        const timeFrames = [];
+        for (let h = 0; h < 24; h++) {
+            for (let m = 0; m < 60; m += 15) {
+                const time = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                timeFrames.push({
+                    time,
+                    percentage: 10, // default percentage
+                    machineId: machine._id
+                });
+            }
+        }
+
+        await TimeFrame.insertMany(timeFrames, { session: transaction });
+
+        await machine.save({ session: transaction });
+        await transaction.commitTransaction();
+
+        res.status(201).json({
+            success: true,
+            message: 'Machine created successfully',
+            data: machine
+        });
+    } catch (error) {
+        await transaction.abortTransaction();
+        return next(error);
+    }finally{
+        await transaction.endSession();
     }
-
-    const machine = new Machine({
-        machineName,
-        machineNumber,
-        status: status || 'Active',
-        location: location ? location : "",
-        description: description ? description : "",
-        depositAmount: depositAmount || 0
-    });
-
-    await machine.save();
-
-    res.status(201).json({
-        success: true,
-        message: 'Machine created successfully',
-        data: machine
-    });
 });
 
 // Get all machines

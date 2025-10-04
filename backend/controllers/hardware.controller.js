@@ -27,7 +27,7 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
     if (!machine) {
         return next(new ErrorHandler('Machine not found', 404));
     }
-    // console.log('machine', machine.depositAmount)
+    console.log('machine', machine.depositAmount)
 
     // Check if machine is active
     if (machine.status !== 'Active') {
@@ -116,7 +116,11 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
 
     if (!deductionFromPlayers) {
         // Payout above 100% must come from machine deposit
-        const extraPayout = finalPool - amountCalculation.totalBetAmount || 0;
+        // console.log('finalPool', finalPool)
+        // console.log('winners?.unusedAmount', winners?.unusedAmount)
+        // console.log('winners?.totalAdded', winners?.totalAdded)
+        // console.log('machine.depositAmount', machine.depositAmount)
+        const extraPayout = finalPool - amountCalculation.totalBetAmount + winners?.totalAdded;
         const unusedFinalAmount = winners?.unusedAmount || 0;
         // console.log('extraPayout', extraPayout)
         if (machine.depositAmount < extraPayout) {
@@ -134,8 +138,22 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
         // Track profits/losses
         adjustedDeductedAmount -= winners?.totalAdded;
         adjustedDeductedAmount += winners?.unusedAmount;
-        machine.depositAmount = Math.max(0, machine.depositAmount - adjustedDeductedAmount);
-        totalAdded = winners?.totalAdded;
+
+        console.log('winners?.totalAddToWinnerToPressCount', winners?.totalAddToWinnerToPressCount)
+        if (winners?.totalAddToWinnerToPressCount > 0) {
+            adjustedDeductedAmount = winners?.totalAdded - deductionAmount;
+            machine.depositAmount = Math.max(0, machine.depositAmount - adjustedDeductedAmount);
+            console.log('winners?.totalAdded', machine.depositAmount, winners?.totalAdded)
+            totalAdded = winners?.totalAdded;
+        } else {
+            console.log('adjutedDeductedAmount', adjustedDeductedAmount)
+            // Prevent negative deduction
+            adjustedDeductedAmount = Math.max(0, adjustedDeductedAmount);
+            console.log('adjustedDeductedAmount', adjustedDeductedAmount)
+            machine.depositAmount = Math.max(0, machine.depositAmount - adjustedDeductedAmount);
+            totalAdded = winners?.totalAdded;
+            console.log('totalAdded', totalAdded)
+        }
     }
 
     // console.log('winners', winners)
@@ -151,10 +169,10 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
         startTime: stopTime, // Using stop time as the reference
         endTime: stopTime,
         totalDuration: 0, // Not applicable for this use case
-        buttonPresses: buttonPresses.map(press => ({
-            buttonNumber: press.buttonNumber,
-            pressCount: press.pressCount,
-            totalAmount: press.pressCount * 10,
+        buttonPresses: amountCalculation.buttonResults.map(button => ({
+            buttonNumber: button.buttonNumber,
+            pressCount: button.pressCount,
+            totalAmount: button.finalAmount // Individual button amount (no deduction)
         })),
         gameTimeFrames: [{
             time: relevantTimeFrame.time,
@@ -175,11 +193,11 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
 
     await gameSession.save();
 
-    // console.log('machine.depositAmount', machine.depositAmount)
-    // console.log('adjustedDeductedAmount', adjustedDeductedAmount)
-    // Deduct the deduction amount from machine deposit (ensure it never goes below 0)
+    console.log('machine.depositAmount', machine.depositAmount)
+    console.log('adjustedDeductedAmount', adjustedDeductedAmount)
+    // // Deduct the deduction amount from machine deposit (ensure it never goes below 0)
     // machine.depositAmount = Math.max(0, machine.depositAmount - adjustedDeductedAmount);
-    // console.log('machine.depositAmount', machine.depositAmount)
+    console.log('machine.depositAmount', machine.depositAmount)
     await machine.save();
 
     // Populate machine details

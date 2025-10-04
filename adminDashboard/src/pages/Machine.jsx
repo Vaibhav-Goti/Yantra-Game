@@ -41,7 +41,7 @@ function Machines() {
   const {mutate: addMachine, isPending: isAddMachinePending, isError: isAddMachineError, error: addMachineError} = useAddMachine()
   const {mutate: deleteMachine, isPending: isDeleteMachinePending, isError: isDeleteMachineError, error: deleteMachineError} = useDeleteMachine()
   const {mutate: updateMachine, isPending: isUpdateMachinePending, isError: isUpdateMachineError, error: updateMachineError} = useUpdateMachine()
-  console.log(data)
+  // console.log(data)
 
   useEffect(() => {
     const start = (page - 1) * limit;
@@ -176,7 +176,7 @@ function Machines() {
 
   // table columns
   const columns = [
-    // { key: "id", label: "ID", render: (row) => row.id || row._id },
+    { key: "id", label: "ID", render: (row) => row.id || row._id },
     { key: "machineName", label: "Machine Name" },
     { key: "machineNumber", label: "Machine Number" },
     {
@@ -318,7 +318,7 @@ function Machines() {
                   totalPages={data?.totalPages || 1}
                   onPageChange={(p) => setPage(p)}
                   limit={limit}
-                  onLimitChange={(newLimit) => setLimit(newLimit)}
+                  onLimitChange={(newLimit) => {setLimit(newLimit); setPage(1)}}
                   totalItems={data?.totalItems || data?.count}
                 />
               </>

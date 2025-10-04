@@ -74,9 +74,23 @@ const timeFrameByMachineValidation = Joi.object({
         })
 });
 
+const timeFrameUpdateBulkValidation = Joi.object({
+    machineId: Joi.string()
+        .required()
+        .messages({
+            'string.empty': 'Machine ID is required',
+            'any.required': 'Machine ID is required'
+        }),
+    timeFrames: Joi.array().items(Joi.object({
+        _id: Joi.string().required(),
+        percentage: Joi.number().required()
+    }))
+});
+
 export { 
     timeFrameValidation, 
     timeFrameUpdateValidation, 
     timeFrameDeleteValidation,
-    timeFrameByMachineValidation 
+    timeFrameByMachineValidation ,
+    timeFrameUpdateBulkValidation
 };
