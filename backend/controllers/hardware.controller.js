@@ -12,7 +12,7 @@ import {
     determineWinners,
     validateGameSession,
     generateSessionId
-} from "../utils/gameUtils.js";
+} from "../utils/gameUtils.js";  
 
 // Process button presses from hardware (WITH STORAGE - process and store results)
 export const processButtonPresses = catchAsyncError(async (req, res, next) => {
@@ -193,11 +193,11 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
 
     await gameSession.save();
 
-    console.log('machine.depositAmount', machine.depositAmount)
-    console.log('adjustedDeductedAmount', adjustedDeductedAmount)
-    // // Deduct the deduction amount from machine deposit (ensure it never goes below 0)
-    // machine.depositAmount = Math.max(0, machine.depositAmount - adjustedDeductedAmount);
-    console.log('machine.depositAmount', machine.depositAmount)
+    // console.log('machine.depositAmount', machine.depositAmount)
+    // console.log('adjustedDeductedAmount', adjustedDeductedAmount)
+    // // // Deduct the deduction amount from machine deposit (ensure it never goes below 0)
+    // // machine.depositAmount = Math.max(0, machine.depositAmount - adjustedDeductedAmount);
+    // console.log('machine.depositAmount', machine.depositAmount)
     await machine.save();
 
     // Populate machine details

@@ -206,10 +206,13 @@ export const determineWinners = (buttonResults, finalAmount) => {
         return group;
     });
 
+    // ✅ Filter pressed buttons
+    const pressedButtons = buttonResults.filter(b => b.pressCount > 0);
+
     const winners = [];
     let remainingAmount = finalAmount;
     let totalAdded = 0;
-    let totalAddToWinnerToPressCount = false;
+    let winnerWithZeroPress = false;
     const MAX_TOP_UP = 50;
 
     for (const button of sortedButtons) {
@@ -254,36 +257,35 @@ export const determineWinners = (buttonResults, finalAmount) => {
                 payOutAmount: button.payOutAmount,
                 isWinner: true
             });
-            totalAddToWinnerToPressCount += button.payOutAmount;
+            winnerWithZeroPress = true;
         }
     }
- 
-    // --- Fallback: ensure at least one winner if any button pressed ---
+
     if (!winners.some(w => w.isWinner)) {
-        const fallbackButton = buttonResults.find(b => b.pressCount >= 1);
+        let fallbackButton;
+
+        // Pick a random button with 0 presses
+        const zeroPressButtons = buttonResults.filter(b => b.pressCount === 0);
+        if (zeroPressButtons.length > 0) {
+            fallbackButton = zeroPressButtons[Math.floor(Math.random() * zeroPressButtons.length)];
+        }
+
         if (fallbackButton) {
             winners.push({
                 buttonNumber: fallbackButton.buttonNumber,
-                amount: fallbackButton.finalAmount,       // minimal payout
-                payOutAmount: fallbackButton.payOutAmount, // minimal payout
+                amount: fallbackButton.finalAmount,
+                payOutAmount: fallbackButton.payOutAmount,
                 isWinner: true
             });
             remainingAmount = Math.max(0, remainingAmount - fallbackButton.payOutAmount);
-            console.log('remainingAmount', remainingAmount)
-            totalAdded += fallbackButton.payOutAmount - finalAmount;
-            totalAddToWinnerToPressCount = true; 
         }
     }
 
-
-    console.log('totalAddToWinnerToPressCount', totalAddToWinnerToPressCount)
     // Ensure remainingAmount never negative due to fallback
     if (remainingAmount < 0) remainingAmount = 0;
 
-    return { winners, unusedAmount: remainingAmount, totalAdded: totalAdded, totalAddToWinnerToPressCount };
+    return { winners, unusedAmount: remainingAmount, totalAdded: totalAdded, winnerWithZeroPress };
 };
-
-
 
 // export const determineWinners = (buttonResults, finalAmount) => {
 //     if (!Array.isArray(buttonResults) || buttonResults.length === 0) {
