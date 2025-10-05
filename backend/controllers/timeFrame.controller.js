@@ -348,3 +348,23 @@ export const getTimeFramesWithAnalysis = catchAsyncError(async (req, res, next) 
         }
     });
 });
+
+// update bulk timeframes
+export const updateBulkTimeFrames = catchAsyncError(async (req, res, next) => {
+    const { machineId, timeFrames } = req.body;
+
+    const bulkOps = timeFrames.map(tf => ({
+        updateOne: {
+          filter: { _id: tf._id, machineId },
+          update: { $set: { percentage: tf.percentage } }
+        }
+      }));
+      
+      const result = await TimeFrame.bulkWrite(bulkOps);
+
+    res.status(200).json({
+        success: true,
+        message: 'TimeFrames updated successfully',
+        data: result
+    });
+});

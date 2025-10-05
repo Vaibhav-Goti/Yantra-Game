@@ -1,98 +1,195 @@
-import React, { useState } from "react";
-import Card, { CardHeader, CardBody } from "../components/ui/Card";
-import Table from "../components/ui/Table";
-import Pagination from "../components/Paginate";
+import React, { useState, useEffect } from "react";
+import Card, { CardHeader, CardBody, CardFooter } from "../components/ui/Card";
 import Dropdown, {
     DropdownItem,
     DropdownHeader,
     DropdownDivider,
 } from "../components/ui/Dropdown";
 import Modal, { ModalHeader, ModalBody, ModalFooter } from "../components/ui/Modal";
-import 'react-datepicker/dist/react-datepicker.css';
-import DatePicker from "react-datepicker";
-import { FaRegClock } from "react-icons/fa";
+import { FaRegClock, FaChevronDown, FaChevronRight, FaEdit, FaSave, FaTimes } from "react-icons/fa";
 import { Button, Input } from "../components/ui";
 import Loading, { LoadingOverlay, LoadingPage } from "../components/ui/Loading";
 import { useGetMachines } from "../hooks/useMachine";
-import { useCreateTimeFrame, useTimeFrame, useUpdateTimeFrame } from "../hooks/useTimeFrame";
+import { useCreateTimeFrame, useTimeFrame, useTimeFramesByMachine, useUpdateBulkTimeFrames, useUpdateTimeFrame } from "../hooks/useTimeFrame";
 import moment from "moment";
 
-function MachineTimeFrames() {
-    const [timeFrames, setTimeFrames] = useState([
-        { id: 1, machine: "Machine 1", start: "10:00", end: "12:00", usage: 40 },
-        { id: 2, machine: "Machine 2", start: "14:00", end: "16:00", usage: 65 },
-    ]);
+// Edit Time Frame Input Component
+const EditTimeFrameInput = ({ timeFrame, machineId, onSave, onCancel }) => {
+    const [editValue, setEditValue] = useState(timeFrame.percentage);
 
-    // console.log(data)
-    const [timeFrame, setTimeFrame] = useState("All");
-    const [page, setPage] = useState(1);
-    const [limit, setLimit] = useState(10);
-    const [totalPages, setTotalPages] = useState(1);
+    const handleSave = () => {
+        onSave(machineId, timeFrame._id, editValue);
+    };
+
+    const handleKeyPress = (e) => {
+        if (e.key === 'Enter') {
+            handleSave();
+        } else if (e.key === 'Escape') {
+            onCancel();
+        }
+    };
+
+    return (
+        <div className="flex items-center gap-0.5">
+            <Input
+                type="number"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                min="0"
+                max="100"
+                className="w-8 text-xs h-6"
+                onKeyPress={handleKeyPress}
+                autoFocus
+            />
+            <Button
+                size="sm"
+                onClick={handleSave}
+                className="bg-green-600 hover:bg-green-700 p-0.5 h-6"
+            >
+                <FaSave className="text-xs" />
+            </Button>
+            <Button
+                size="sm"
+                variant="secondary"
+                onClick={onCancel}
+                className="p-0.5 h-6"
+            >
+                <FaTimes className="text-xs" />
+            </Button>
+        </div>
+    );
+};
+
+function MachineTimeFrames() {
+    const [expandedMachines, setExpandedMachines] = useState({});
+    const [editingTimeFrames, setEditingTimeFrames] = useState({});
+    const [machineTimeFrames, setMachineTimeFrames] = useState([]);
+    const [localEdits, setLocalEdits] = useState({});
+    const [applyToAllPercentage, setApplyToAllPercentage] = useState('');
     const [showModal, setShowModal] = useState(false);
     const [editFrame, setEditFrame] = useState(null);
-    const [machineId, setMachineId] = useState(null);
     const [formData, setFormData] = useState({
         machineId: '',
         time: '',
         percentage: ''
     });
     const [errors, setErrors] = useState({});
-    
-    const { data, isPending, isError, error } = useGetMachines()
-    const { data: timeFrameData, isLoading: isTimeFrameLoading, isError: isTimeFrameError, error: timeFrameError } = useTimeFrame({ page, limit, ...(machineId && { machineId }) });
+
+    const { data: machinesData, isPending: isMachinesPending, isError: isMachinesError, error: machinesError } = useGetMachines();
+    const { data: timeFrameData, isLoading: isTimeFrameLoading, isError: isTimeFrameError, error: timeFrameError } = useTimeFrame({});
     const { mutate: createTimeFrame, isPending: isCreateTimeFramePending, isError: isCreateTimeFrameError, error: createTimeFrameError } = useCreateTimeFrame();
     const { mutate: updateTimeFrame, isPending: isUpdateTimeFramePending, isError: isUpdateTimeFrameError, error: updateTimeFrameError } = useUpdateTimeFrame();
-    // console.log(timeFrameData)
+    const { mutate: timeFramesByMachine, data: timeFramesByMachineData, isPending: isTimeFramesByMachinePending, isError: isTimeFramesByMachineError, error: timeFramesByMachineError } = useTimeFramesByMachine();
+    const { mutate: updateBulkTimeFrames, isPending: isUpdateBulkTimeFramesPending, isError: isUpdateBulkTimeFramesError, error: updateBulkTimeFramesError } = useUpdateBulkTimeFrames();
+    // console.log(timeFramesByMachineData)
+
 
     // Show loading page if machines are loading
-    if (isPending) {
+    if (isMachinesPending) {
         return <LoadingPage text="Loading machines..." />;
     }
 
     // Show error state if machines failed to load
-    if (isError) {
+    if (isMachinesError) {
         return (
             <div className="flex items-center justify-center min-h-screen">
                 <div className="text-center">
                     <div className="text-red-500 text-lg mb-4">Failed to load machines</div>
-                    <p className="text-gray-600">{error?.message || 'Something went wrong'}</p>
+                    <p className="text-gray-600">{machinesError?.message || 'Something went wrong'}</p>
                 </div>
             </div>
         );
     }
 
-    // Table Columns
-    const columns = [
-        { key: "time", label: "Time" },
-        { key: "machine", label: "Machine" },
-        {
-            key: "percentage",
-            label: "Percentage %",
-            render: (row) => (
-                <span
-                    className={`px-2 py-1 rounded text-xs font-medium ${row.percentage > 50
-                        ? "bg-blue-100 text-blue-700"
-                        : "bg-gray-100 text-gray-600"
-                        }`}
-                >
-                    {row.percentage}%
-                </span>
-            ),
-        },
-        {
-            key: "actions",
-            label: "Actions",
-            render: (row) => (
-                <Button
-                    variant="link"
-                    className="text-sm text-indigo-600 hover:underline p-0 h-auto"
-                    onClick={() => handleEdit(row)}
-                >
-                    Edit
-                </Button>
-            ),
-        },
-    ];
+    // Toggle machine expansion - only one machine open at a time
+    const toggleMachine = (machineId) => {
+        // Close all other machines first
+        const newExpanded = {};
+
+        // If the clicked machine is not currently expanded, expand it
+        if (!expandedMachines[machineId]) {
+            newExpanded[machineId] = true;
+            // Fetch time frames for this machine
+            timeFramesByMachine({ machineId }, {
+                onSuccess: (data) => {
+                  setMachineTimeFrames(data.data);
+                  setLocalEdits((prev) => ({ ...prev, [machineId]: data.data }));
+                },
+                onError: (error) => {
+                  console.error('Error fetching time frames:', error);
+                }
+            });
+        }
+
+        setExpandedMachines(newExpanded);
+    };
+
+    // Handle edit time frame
+    const handleEditTimeFrame = (machineId, timeFrameId) => {
+        setEditingTimeFrames(prev => ({
+            ...prev,
+            [`${machineId}-${timeFrameId}`]: true
+        }));
+    };
+
+    // Handle cancel edit
+    const handleCancelEdit = (machineId, timeFrameId) => {
+        setEditingTimeFrames(prev => {
+            const newState = { ...prev };
+            delete newState[`${machineId}-${timeFrameId}`];
+            return newState;
+        });
+    };
+
+    // Handle save time frame
+    const handleSaveTimeFrame = (machineId, timeFrameId, newPercentage) => {
+        const timeFrame = machineTimeFrames[machineId]?.timeFrames.find(tf => tf._id === timeFrameId);
+        if (timeFrame) {
+            updateTimeFrame({
+                id: timeFrameId,
+                machineId: machineId,
+                time: timeFrame.time,
+                percentage: newPercentage
+            }, {
+                onSuccess: () => {
+                    handleCancelEdit(machineId, timeFrameId);
+                }
+            });
+        }
+    };
+
+    // Handle apply to all
+    const handelSaveChanges = (machineId) => {
+        const machineData = localEdits[machineId] || [];
+       
+        if (machineData.length > 0) {
+            const data = machineData?.map(timeFrame => {
+                    return {
+                    _id: timeFrame._id,
+                    percentage: Number(timeFrame.percentage)
+                };
+            });
+            console.log("data", data);
+            updateBulkTimeFrames({
+                machineId: machineId,
+                timeFrames: data
+            }, {
+                onSuccess: () => {
+                    setApplyToAllPercentage('');
+                    // Refresh the data after successful update
+                    timeFramesByMachine({ machineId }, {
+                        onSuccess: (data) => {
+                            setMachineTimeFrames(data.data);
+                            setLocalEdits((prev) => ({ ...prev, [machineId]: data.data }));
+                        }
+                    });
+                },
+                onError: (error) => {
+                    console.error('Error updating bulk time frames:', error);
+                }
+            });
+        }
+    };
 
     // Time conversion functions
     const convertTo24Hour = (timeInput) => {
@@ -128,21 +225,21 @@ function MachineTimeFrames() {
     // Form validation
     const validateForm = () => {
         const newErrors = {};
-        
+
         if (!formData.machineId) {
             newErrors.machineId = 'Machine is required';
         }
-        
+
         if (!formData.time) {
             newErrors.time = 'Time is required';
         }
-        
+
         if (!formData.percentage) {
             newErrors.percentage = 'Percentage is required';
         } else if (isNaN(formData.percentage) || formData.percentage < 0 || formData.percentage > 100) {
             newErrors.percentage = 'Percentage must be between 0 and 100';
         }
-        
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -154,7 +251,7 @@ function MachineTimeFrames() {
             ...prev,
             [name]: value
         }));
-        
+
         // Clear error when user starts typing
         if (errors[name]) {
             setErrors(prev => ({
@@ -168,7 +265,7 @@ function MachineTimeFrames() {
     // Handle form submission
     const handleSubmit = (e) => {
         e.preventDefault();
-        
+
         if (!validateForm()) {
             return;
         }
@@ -176,20 +273,20 @@ function MachineTimeFrames() {
         const time24h = moment(formData.time, 'HH:mm', true);
         let time24hFormatted = formData.time;
         if (!time24h.isValid()) {
-            time24hFormatted =  moment(formData.time, 'h:mm A', true).format('HH:mm');
-        }else{
+            time24hFormatted = moment(formData.time, 'h:mm A', true).format('HH:mm');
+        } else {
             time24hFormatted = formData.time;
         }
 
 
-        
+
         // Native time input already provides HH:mm format, so use directly
         const submitData = {
             machineId: editFrame ? editFrame.machineId._id : formData.machineId,
             time: time24hFormatted, // Already in HH:mm format from time input
             percentage: Number(formData.percentage)
         };
-        
+
         if (editFrame) {
             submitData.id = editFrame._id;
             // Handle edit logic here
@@ -234,92 +331,269 @@ function MachineTimeFrames() {
         setErrors({});
     };
 
-    // Handle edit
-    const handleEdit = (row) => {
-        console.log(row);
-        setEditFrame(row);
-        setFormData({
-            machineId: row.machineId._id || '',
-            time: convertToTimeInput(row.time) || '', // Convert to HH:mm for time input
-            percentage: row.percentage || ''
-        });
-        setShowModal(true);
-    };
-
     return (
         <>
             <Card>
-                <CardHeader className="flex justify-between items-center flex-wrap">
+                <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
                     <h3 className="text-lg font-semibold">Machine Time Frames</h3>
 
-                    <div className="flex items-center gap-3 flex-wrap">
-                        {/* Filter Dropdown */}
-                        <Dropdown
-                            trigger={
-                                <button 
-                                    className="px-3 py-2 bg-gray-100 rounded-md hover:bg-gray-200 text-sm font-medium flex items-center gap-2"
-                                    disabled={isPending}
-                                >
-                                    {isPending ? <Loading size="sm" /> : null}
-                                    {timeFrame}
-                                </button>
-                            }
-                            placement="bottom-end"
-                        >
-                            <DropdownHeader>Filter</DropdownHeader>
-                            <DropdownItem onClick={() => {
-                                setTimeFrame("All");
-                                setMachineId(null);   // reset filter
-                            }}>All</DropdownItem>
-                            {data?.data?.length > 0 && data?.data?.map((m) => (
-                                <DropdownItem key={m._id} onClick={() => {
-                                    setTimeFrame(m.machineName);
-                                    setMachineId(m._id);
-                                }}>
-                                    {m.machineName}
-                                </DropdownItem>
-                            ))}
-                            {/* <DropdownDivider />
-                            <DropdownItem onClick={() => setTimeFrame("Today")}>
-                                Today
-                            </DropdownItem> */}
-                        </Dropdown>
-
+                    <div className="flex items-center gap-3 w-full sm:w-auto">
                         {/* Add Time Frame */}
                         <Button
-                            onClick={handleModalOpen}
-                            className="px-3 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700"
+                            onClick={() => setShowModal(true)}
+                            className="w-full sm:w-auto px-3 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700"
                         >
                             + Add Time Frame
                         </Button>
                     </div>
                 </CardHeader>
 
-                <CardBody>
+                <CardBody padding="p-0 sm:p-1">
                     <LoadingOverlay isLoading={isTimeFrameLoading}>
-                        {timeFrameData?.data?.length > 0 ? (
-                            <>
-                                <Table
-                                    responsive
-                                    columns={columns}
-                                    data={timeFrameData?.data?.map(timeFrame => ({
-                                        id: timeFrame?._id,
-                                        time: convertTo12Hour(timeFrame?.time), // Convert to 12-hour for display
-                                        machine: timeFrame?.machineId?.machineName,
-                                        percentage: timeFrame?.percentage,
-                                        ...timeFrame
-                                    }))}
-                                />
+                        {machinesData?.data?.length > 0 ? (
+                            <div className="space-y-3 sm:space-y-4 ">
+                                {machinesData?.data?.map((machine) => (
+                                    <Card padding="p-2 sm:p-1" key={machine._id} className="border border-gray-200">
+                                        <CardHeader
+                                            padding="p-0 sm:p-1"
+                                            className="cursor-pointer hover:bg-gray-50 transition-colors"
+                                            onClick={() => toggleMachine(machine._id)}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                                                    {expandedMachines[machine._id] ? (
+                                                        <FaChevronDown className="text-gray-500 flex-shrink-0" />
+                                                    ) : (
+                                                        <FaChevronRight className="text-gray-500 flex-shrink-0" />
+                                                    )}
+                                                    <div className="min-w-0 flex-1">
+                                                        <h4 className="font-semibold text-base sm:text-lg truncate">{machine.machineName}</h4>
+                                                        <p className="text-xs sm:text-sm text-gray-500 truncate">ID: {machine._id}</p>
+                                                    </div>
+                                                </div>
+                                                {/* <div className="text-sm text-gray-500">
+                                                    {timeFramesByMachineData?.data?.length} time frame(s)
+                                                </div> */}
+                                            </div>
+                                        </CardHeader>
 
-                                <Pagination
-                                    currentPage={page}
-                                    totalPages={timeFrameData?.totalPages}
-                                    onPageChange={(p) => setPage(p)}
-                                    limit={limit}
-                                    onLimitChange={(newLimit) => setLimit(newLimit)}
-                                    totalItems={timeFrameData?.totalItems || timeFrameData?.count}
-                                />
-                            </>
+                                        {/* {expandedMachines[machine._id] && (
+                                            <CardBody padding="p-2 sm:p-1">
+                                                <div className="space-y-4">
+                                                    <div className="bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-200">
+                                                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+                                                            <Input
+                                                                type="number"
+                                                                placeholder="Enter percentage (0-100)"
+                                                                value={applyToAllPercentage}
+                                                                onChange={(e) => setApplyToAllPercentage(e.target.value)}
+                                                                min="0"
+                                                                className="flex-1 w-full sm:w-auto"
+                                                            />
+                                                            <Button
+                                                                onClick={() => handleApplyToAll(machine._id)}
+                                                                className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
+                                                                disabled={!applyToAllPercentage || isNaN(applyToAllPercentage)}
+                                                            >
+                                                                Apply to All
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+
+                                                    
+                                                    <div className="flex gap-2 overflow-x-auto pb-2">
+                                                        {timeFramesByMachineData?.data?.map((timeFrame) => {
+                                                            const isEditing = editingTimeFrames[`${machine._id}-${timeFrame._id}`];
+                                                            return (
+                                                                <div key={timeFrame._id} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2 text-sm flex-shrink-0 min-w-fit border">
+                                                                    <FaRegClock className="text-gray-400 text-sm flex-shrink-0" />
+                                                                    <span className="font-medium text-sm whitespace-nowrap">
+                                                                        {timeFrame.time}
+                                                                    </span>
+                                                                    
+                                                                    {isEditing ? (
+                                                                        <div className="flex items-center gap-1">
+                                                                            <Input
+                                                                                type="number"
+                                                                                value={timeFrame.percentage}
+                                                                                onChange={(e) => {
+                                                                                    const newPercentage = e.target.value;
+                                                                                    if (newPercentage !== '' && !isNaN(newPercentage) && newPercentage >= 0 && newPercentage <= 100) {
+                                                                                        handleSaveTimeFrame(machine._id, timeFrame._id, newPercentage);
+                                                                                    }
+                                                                                }}
+                                                                                onBlur={() => handleCancelEdit(machine._id, timeFrame._id)}
+                                                                                onKeyPress={(e) => {
+                                                                                    if (e.key === 'Enter') {
+                                                                                        handleCancelEdit(machine._id, timeFrame._id);
+                                                                                    } else if (e.key === 'Escape') {
+                                                                                        handleCancelEdit(machine._id, timeFrame._id);
+                                                                                    }
+                                                                                }}
+                                                                                min="0"
+                                                                                className="w-16 text-md h-7"
+                                                                                autoFocus
+                                                                            />
+                                                                        </div>
+                                                                    ) : (
+                                                                        <span 
+                                                                            className={`px-2 py-1 rounded text-sm font-medium whitespace-nowrap cursor-pointer hover:bg-blue-200 transition-colors ${
+                                                                                timeFrame.percentage > 50 
+                                                                                    ? "bg-blue-100 text-blue-700" 
+                                                                                    : "bg-gray-100 text-gray-600"
+                                                                            }`}
+                                                                            onClick={() => handleEditTimeFrame(machine._id, timeFrame._id)}
+                                                                        >
+                                                                            {timeFrame.percentage}%
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            </CardBody>
+                                        )} */}
+                                        {expandedMachines[machine._id] && (
+                                            <CardBody padding="p-4 sm:p-5 bg-gray-50">
+                                                <LoadingOverlay isLoading={isTimeFramesByMachinePending || isUpdateBulkTimeFramesPending}>
+                                                    {/* Show loading state when fetching time frames */}
+                                                    {isTimeFramesByMachinePending ? (
+                                                        <div className="flex items-center justify-center py-8">
+                                                            <div className="text-center">
+                                                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-2"></div>
+                                                                <p className="text-gray-600">Loading time frames...</p>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            {/* Show no data message if no time frames */}
+                                                            {(!timeFramesByMachineData?.data || timeFramesByMachineData.data.length === 0) ? (
+                                                                <div className="text-center py-8">
+                                                                    <div className="text-gray-500 text-lg mb-2">No time frames available</div>
+                                                                    <p className="text-gray-400">This machine doesn't have any time frames configured</p>
+                                                                </div>
+                                                            ) : (
+                                                                <>
+                                                                    {/* Apply to All Section */}
+                                                                    <div className="mb-4 flex flex-col sm:flex-row items-center gap-3">
+                                                    <Input
+                                                        type="number"
+                                                        placeholder="Apply percentage to all (0–100)"
+                                                        value={applyToAllPercentage}
+                                                        onChange={(e) => setApplyToAllPercentage(e.target.value)}
+                                                        min="0"
+                                                        max="100"
+                                                        className="w-full sm:w-1/3"
+                                                    />
+                                                    <Button
+                                                        onClick={() => {
+                                                            if (!applyToAllPercentage) return;
+                                                            setLocalEdits((prev) => ({
+                                                                ...prev,
+                                                                [machine._id]:
+                                                                    prev[machine._id]?.map((tf) => ({
+                                                                        ...tf,
+                                                                        percentage: Number(applyToAllPercentage),
+                                                                    })) ||
+                                                                    (timeFramesByMachineData?.data || []).map((tf) => ({
+                                                                        ...tf,
+                                                                        percentage: Number(applyToAllPercentage),
+                                                                    })),
+                                                            }));
+                                                        }}
+                                                        className="bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        disabled={!applyToAllPercentage || isNaN(applyToAllPercentage) || applyToAllPercentage < 0 || applyToAllPercentage > 100}
+                                                    >
+                                                        Apply to All
+                                                    </Button>
+                                                </div>
+
+                                                {/* Time Frames in Grid (NO SCROLLBAR) */}
+                                                <div
+                                                    className="grid gap-4 sm:gap-3 md:grid-cols-3 sm:grid-cols-2 grid-cols-1"
+                                                    style={{ overflow: "hidden" }}
+                                                >
+                                                    {(localEdits[machine._id] || timeFramesByMachineData?.data || []).map(
+                                                        (timeFrame, index) => (
+                                                            <div
+                                                                key={timeFrame._id || index}
+                                                                className="flex flex-col gap-2 p-3 bg-white rounded-lg shadow-sm border border-gray-200"
+                                                            >
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <FaRegClock className="text-gray-400 text-sm" />
+                                                                        <span className="font-medium text-gray-700 text-sm sm:text-base">
+                                                                            {timeFrame.time}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+
+                                                                <Input
+                                                                    type="number"
+                                                                    min="0"
+                                                                    max="100"
+                                                                    value={timeFrame.percentage}
+                                                                    onChange={(e) => {
+                                                                        const newVal = e.target.value;
+                                                                        setLocalEdits((prev) => ({
+                                                                            ...prev,
+                                                                            [machine._id]:
+                                                                                (prev[machine._id] ||
+                                                                                    timeFramesByMachineData?.data)?.map((tf) =>
+                                                                                        tf._id === timeFrame._id
+                                                                                            ? { ...tf, percentage: newVal }
+                                                                                            : tf
+                                                                                    ),
+                                                                        }));
+                                                                    }}
+                                                                    className="w-full text-center text-sm sm:text-base"
+                                                                    disabled={isUpdateBulkTimeFramesPending}
+                                                                />
+                                                            </div>
+                                                        )
+                                                    )}
+                                                </div>
+
+                                                {/* Save / Cancel Buttons */}
+                                                <div className="flex justify-end gap-3 mt-6">
+                                                    <Button
+                                                        variant="secondary"
+                                                        className="bg-gray-200 hover:bg-gray-300"
+                                                        onClick={() => {
+                                                            setLocalEdits((prev) => {
+                                                                const newEdits = { ...prev };
+                                                                delete newEdits[machine._id];
+                                                                return newEdits;
+                                                            });
+                                                            setApplyToAllPercentage("");
+                                                        }}
+                                                    >
+                                                        Cancel
+                                                    </Button>
+
+                                                    <Button
+                                                        className="bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                                        onClick={() => {
+                                                            handelSaveChanges(machine._id);   
+                                                        }}
+                                                        disabled={isUpdateBulkTimeFramesPending}
+                                                        loading={isUpdateBulkTimeFramesPending}
+                                                    >
+                                                        {isUpdateBulkTimeFramesPending ? 'Saving...' : 'Save Changes'}
+                                                    </Button>
+                                                </div>
+                                                                </>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                </LoadingOverlay>
+                                            </CardBody>
+                                        )}
+
+                                    </Card>
+                                ))}
+                            </div>
                         ) : !isTimeFrameLoading ? (
                             <div className="text-center py-8">
                                 <div className="text-gray-500 text-lg mb-2">No time frames found</div>
@@ -334,7 +608,8 @@ function MachineTimeFrames() {
             <Modal
                 isOpen={showModal}
                 onClose={handleModalClose}
-                size="md"
+                size="sm"
+                className="mx-4 sm:mx-0"
             >
                 <ModalHeader onClose={handleModalClose}>
                     {editFrame ? "Edit Time Frame" : "Add Time Frame"}
@@ -349,7 +624,7 @@ function MachineTimeFrames() {
                             </p>
                         </div>
                     )}
-                    
+
                     <form
                         id="timeFrameForm"
                         onSubmit={handleSubmit}
@@ -365,7 +640,7 @@ function MachineTimeFrames() {
                                 className={`w-full border rounded px-3 py-2 ${errors.machineId ? 'border-red-500' : 'border-gray-300'}`}
                             >
                                 <option value="">Select a machine</option>
-                                {data?.data?.length > 0 && data?.data?.map((m) => (
+                                {machinesData?.data?.length > 0 && machinesData?.data?.map((m) => (
                                     <option key={m._id} value={m._id}>
                                         {m.machineName}
                                     </option>
@@ -438,12 +713,12 @@ function MachineTimeFrames() {
                     </form>
                 </ModalBody>
 
-                <ModalFooter>
+                <ModalFooter className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                     <Button
                         type="button"
                         variant="secondary"
                         onClick={handleModalClose}
-                        className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300"
+                        className="w-full sm:w-auto px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300 text-sm"
                         disabled={isCreateTimeFramePending || isUpdateTimeFramePending}
                     >
                         Cancel
@@ -451,7 +726,7 @@ function MachineTimeFrames() {
                     <Button
                         type="submit"
                         form="timeFrameForm"
-                        className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
                         disabled={isCreateTimeFramePending || isUpdateTimeFramePending}
                         loading={isCreateTimeFramePending || isUpdateTimeFramePending}
                     >

@@ -184,8 +184,6 @@ export const determineWinners = (buttonResults, finalAmount) => {
         return { winners: [], unusedAmount: finalAmount, totalAdded: 0 };
     }
 
-    // const sortedButtons = [...buttonResults].sort((a, b) => b.payOutAmount - a.payOutAmount);
-
     // Group by payOutAmount
     const grouped = {};
     for (const b of buttonResults) {
@@ -196,13 +194,11 @@ export const determineWinners = (buttonResults, finalAmount) => {
     // Sort payout amounts high → low, shuffle inside each group
     const sortedPayouts = Object.keys(grouped)
         .map(Number)
-        .sort((a, b) => b - a) // sort payouts desc
+        .sort((a, b) => b - a);
 
-
-    // 4. Flatten buttons into one list, shuffle inside equal groups
+    // Flatten buttons into one list, shuffle inside equal groups
     const sortedButtons = sortedPayouts.flatMap(payout => {
         const group = grouped[payout];
-        // shuffle inside group for fairness
         for (let i = group.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [group[i], group[j]] = [group[j], group[i]];
@@ -210,11 +206,13 @@ export const determineWinners = (buttonResults, finalAmount) => {
         return group;
     });
 
-    // console.log(sortedButtons);
+    // ✅ Filter pressed buttons
+    const pressedButtons = buttonResults.filter(b => b.pressCount > 0);
 
     const winners = [];
     let remainingAmount = finalAmount;
     let totalAdded = 0;
+    let winnerWithZeroPress = false;
     const MAX_TOP_UP = 50;
 
     for (const button of sortedButtons) {
@@ -251,12 +249,43 @@ export const determineWinners = (buttonResults, finalAmount) => {
                     });
                 }
             }
+        } else if (button.pressCount >= 1) {
+            // Fallback: any pressed button with 0 payOutAmount becomes a winner
+            winners.push({
+                buttonNumber: button.buttonNumber,
+                amount: button.finalAmount, // or 1 if you want minimal
+                payOutAmount: button.payOutAmount,
+                isWinner: true
+            });
+            winnerWithZeroPress = true;
         }
     }
 
-    return { winners, unusedAmount: remainingAmount, totalAdded };
-};
+    if (!winners.some(w => w.isWinner)) {
+        let fallbackButton;
 
+        // Pick a random button with 0 presses
+        const zeroPressButtons = buttonResults.filter(b => b.pressCount === 0);
+        if (zeroPressButtons.length > 0) {
+            fallbackButton = zeroPressButtons[Math.floor(Math.random() * zeroPressButtons.length)];
+        }
+
+        if (fallbackButton) {
+            winners.push({
+                buttonNumber: fallbackButton.buttonNumber,
+                amount: fallbackButton.finalAmount,
+                payOutAmount: fallbackButton.payOutAmount,
+                isWinner: true
+            });
+            remainingAmount = Math.max(0, remainingAmount - fallbackButton.payOutAmount);
+        }
+    }
+
+    // Ensure remainingAmount never negative due to fallback
+    if (remainingAmount < 0) remainingAmount = 0;
+
+    return { winners, unusedAmount: remainingAmount, totalAdded: totalAdded, winnerWithZeroPress };
+};
 
 // export const determineWinners = (buttonResults, finalAmount) => {
 //     if (!Array.isArray(buttonResults) || buttonResults.length === 0) {

@@ -4,7 +4,8 @@ import {
     timeFrameValidation, 
     timeFrameUpdateValidation, 
     timeFrameDeleteValidation,
-    timeFrameByMachineValidation 
+    timeFrameByMachineValidation, 
+    timeFrameUpdateBulkValidation
 } from '../validations/timeFrame.validation.js';
 import { 
     createTimeFrame,
@@ -15,7 +16,8 @@ import {
     getTimeFramesByMachine,
     getCurrentTimeFrameForMachine,
     getTimeFramesByPercentageRange,
-    getTimeFramesWithAnalysis
+    getTimeFramesWithAnalysis,
+    updateBulkTimeFrames
 } from '../controllers/timeFrame.controller.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
 
@@ -28,6 +30,7 @@ router.route('/percentage-range').get(authMiddleware, getTimeFramesByPercentageR
 router.route('/get/:id').get(authMiddleware, getTimeFrameById);
 router.route('/update').post(authMiddleware, reqBodyValidator(timeFrameUpdateValidation), updateTimeFrame);
 router.route('/delete').post(authMiddleware, reqBodyValidator(timeFrameDeleteValidation), deleteTimeFrame);
+router.route('/update-bulk').post(authMiddleware, reqBodyValidator(timeFrameUpdateBulkValidation), updateBulkTimeFrames);
 
 // Machine-specific routes
 router.route('/by-machine').post(authMiddleware, reqBodyValidator(timeFrameByMachineValidation), getTimeFramesByMachine);

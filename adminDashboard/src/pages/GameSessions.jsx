@@ -20,6 +20,7 @@ function GameSessions() {
   const [selectedSession, setSelectedSession] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // console.log(page, limit)
   const {data: machinesData, isPending: isMachinesPending, isError: isMachinesError, error: machinesError} = useGetMachines()
   const {data: gameSessionsData, isPending: isGameSessionsPending, isError: isGameSessionsError, error: gameSessionsError} = useGameSessions({page, limit, ...(machineFilter !== "All" && { machineId: machineFilter }) })
 
@@ -199,12 +200,12 @@ function GameSessions() {
               clickable
             />
             <Pagination
-              currentPage={gameSessionsData.pagination?.currentPage || page}
-              totalPages={gameSessionsData.pagination?.totalPages || 1}
+              currentPage={gameSessionsData?.currentPage || page}
+              totalPages={gameSessionsData?.totalPages || 1}
               onPageChange={(p) => setPage(p)}
               limit={limit}
-              onLimitChange={(newLimit) => setLimit(newLimit)}
-              totalItems={gameSessionsData.pagination?.totalItems || gameSessionsData.count}
+              onLimitChange={(newLimit) => {setLimit(newLimit); setPage(1)}}
+              totalItems={gameSessionsData?.count || gameSessionsData.count}
             />
           </>
         ) : (
@@ -338,17 +339,41 @@ function GameSessions() {
 
               {/* Button Results */}
               <div>
-                <label className="text-sm font-medium text-gray-500 mb-3 block">Button Results</label>
+                <label className="text-sm font-medium text-gray-500 mb-3 block">All Button Results</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {selectedSession.buttonResults?.map((button, index) => (
-                    <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg border">
-                      <span className="text-sm font-medium">Button {button.buttonNumber}</span>
-                      <div className="text-right">
-                        <p className="text-xs text-gray-500">{button.pressCount} presses</p>
-                        <p className="text-sm font-bold">₹{button.buttonAmount}</p>
+                  {selectedSession.buttonPresses?.map((button, index) => {
+                    // Check if this button is a winner
+                    const isWinner = selectedSession.winners?.some(winner => winner.buttonNumber === button.buttonNumber);
+                    
+                    return (
+                      <div 
+                        key={index} 
+                        className={`flex justify-between items-center p-3 rounded-lg border ${
+                          isWinner 
+                            ? 'bg-green-50 border-green-200' 
+                            : 'bg-gray-50 border-gray-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">Button {button.buttonNumber}</span>
+                          {isWinner && (
+                            <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                              WINNER
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-gray-500">{button.pressCount} presses</p>
+                          <p className="text-sm font-bold">₹{button.totalAmount}</p>
+                          {isWinner && (
+                            <p className="text-xs text-green-600 font-medium">
+                              Won: ₹{selectedSession.winners?.find(w => w.buttonNumber === button.buttonNumber)?.payOutAmount}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
