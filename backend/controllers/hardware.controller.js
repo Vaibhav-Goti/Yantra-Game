@@ -315,8 +315,8 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
 
         // Return processed results WITH storage confirmation
         res.status(201).json({
-            success: true,
-            message: 'Game processed and stored successfully',
+            // success: true,
+            // message: 'Game processed and stored successfully',
             data: {
                 // sessionId: gameSession.sessionId,
                 // machine: {
@@ -342,9 +342,9 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
                 // })),
                 winners: winners?.winners.filter(w => w.isWinner).map(winner => ({
                     buttonNumber: winner.buttonNumber,
-                    amount: winner.amount,
-                    payOutAmount: winner.payOutAmount,
-                    isWinner: winner.isWinner,
+                    // amount: winner.amount,
+                    // payOutAmount: winner.payOutAmount,
+                    // isWinner: winner.isWinner,
                     // winnerType: winner.winnerType || 'regular'
                 })),
                 // unusedAmount: winners?.unusedAmount,
