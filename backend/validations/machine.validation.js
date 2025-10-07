@@ -124,7 +124,70 @@ const addDepositValidation = Joi.object({
             'number.base': 'Amount must be a number',
             'number.min': 'Amount must be greater than 0',
             'any.required': 'Amount is required'
+        }),
+    note: Joi.string()
+        .trim()
+        .max(500)
+        .allow('')
+        .messages({
+            'string.max': 'Note cannot exceed 500 characters'
         })
 });
 
-export { machineValidation, machineUpdateValidation, machineDeleteValidation, addDepositValidation };
+// Transaction validation schemas
+const addAmountValidation = Joi.object({
+    machineId: Joi.string()
+        .required()
+        .messages({
+            'string.empty': 'Machine ID is required',
+            'any.required': 'Machine ID is required'
+        }),
+    amount: Joi.number()
+        .min(1)
+        .required()
+        .messages({
+            'number.base': 'Amount must be a number',
+            'number.min': 'Amount must be greater than 0',
+            'any.required': 'Amount is required'
+        }),
+    note: Joi.string()
+        .trim()
+        .max(500)
+        .allow('')
+        .messages({
+            'string.max': 'Note cannot exceed 500 characters'
+        })
+});
+
+const withdrawAmountValidation = Joi.object({
+    machineId: Joi.string()
+        .required()
+        .messages({
+            'string.empty': 'Machine ID is required',
+            'any.required': 'Machine ID is required'
+        }),
+    amount: Joi.number()
+        .min(1)
+        .required()
+        .messages({
+            'number.base': 'Amount must be a number',
+            'number.min': 'Amount must be greater than 0',
+            'any.required': 'Amount is required'
+        }),
+    note: Joi.string()
+        .trim()
+        .max(500)
+        .allow('')
+        .messages({
+            'string.max': 'Note cannot exceed 500 characters'
+        })
+});
+
+export { 
+    machineValidation, 
+    machineUpdateValidation, 
+    machineDeleteValidation, 
+    addDepositValidation,
+    addAmountValidation,
+    withdrawAmountValidation
+};

@@ -8,6 +8,7 @@ import Machines from './pages/Machine'
 import MachineTimeFrames from './pages/TimeFrame'
 import AdminManagement from './pages/User'
 import GameSessions from './pages/GameSessions'
+import GameManagement from './pages/GameManagement'
 import ProfilePage from './pages/Page'
 import ChangePassword from './pages/ChangePassword'
 import ForgotPassword from './pages/ForgotPassword'
@@ -43,6 +44,10 @@ function App() {
         {
           path: '/sessions',
           element: <GameSessions />
+        },
+        {
+          path: '/game-management',
+          element: <GameManagement />
         },
         {
           path: '/users',

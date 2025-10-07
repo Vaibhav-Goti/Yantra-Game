@@ -179,112 +179,330 @@ function shuffle(array) {
 //     return winners;
 // };
 
-export const determineWinners = (buttonResults, finalAmount) => {
+// export const determineWinners = (buttonResults, finalAmount) => {
+//     if (!Array.isArray(buttonResults) || buttonResults.length === 0) {
+//         return { winners: [], unusedAmount: finalAmount, totalAdded: 0 };
+//     }
+
+//     // Group by payOutAmount
+//     const grouped = {};
+//     for (const b of buttonResults) {
+//         if (!grouped[b.payOutAmount]) grouped[b.payOutAmount] = [];
+//         grouped[b.payOutAmount].push(b);
+//     }
+
+//     // // Sort payout amounts high → low, shuffle inside each group
+//     const sortedPayouts = Object.keys(grouped)
+//         .map(Number)
+//         .sort((a, b) => b - a);
+
+//     // Flatten buttons into one list, shuffle inside equal groups
+//     const sortedButtons = sortedPayouts.flatMap(payout => {
+//         const group = grouped[payout];
+//         for (let i = group.length - 1; i > 0; i--) {
+//             const j = Math.floor(Math.random() * (i + 1));
+//             [group[i], group[j]] = [group[j], group[i]];
+//         }
+//         return group;
+//     });
+
+//     const winners = [];
+//     let remainingAmount = finalAmount;
+//     let totalAdded = 0;
+//     let winnerWithZeroPress = false;
+//     const MAX_TOP_UP = 50;
+
+//     for (const button of sortedButtons) {
+//         if (button.payOutAmount > 0) {
+//             if (button.payOutAmount <= remainingAmount) {
+//                 // Full pay
+//                 winners.push({
+//                     buttonNumber: button.buttonNumber,
+//                     amount: button.finalAmount,
+//                     payOutAmount: button.payOutAmount,
+//                     isWinner: true
+//                 });
+//                 remainingAmount -= button.payOutAmount;
+
+//             } else {
+//                 const shortfall = button.payOutAmount - remainingAmount;
+//                 if (remainingAmount > 0 && shortfall <= MAX_TOP_UP) {
+//                     // Pay with top-up
+//                     winners.push({
+//                         buttonNumber: button.buttonNumber,
+//                         amount: button.finalAmount,
+//                         payOutAmount: button.payOutAmount,
+//                         isWinner: true
+//                     });
+//                     totalAdded += shortfall;
+//                     remainingAmount = 0;
+//                 } else {
+//                     // Cannot pay
+//                     winners.push({
+//                         buttonNumber: button.buttonNumber,
+//                         amount: 0,
+//                         payOutAmount: button.payOutAmount,
+//                         isWinner: false
+//                     });
+//                 }
+//             }
+//         } else if (button.pressCount >= 1) {
+//             // Fallback: any pressed button with 0 payOutAmount becomes a winner
+//             winners.push({
+//                 buttonNumber: button.buttonNumber,
+//                 amount: button.finalAmount, // or 1 if you want minimal
+//                 payOutAmount: button.payOutAmount,
+//                 isWinner: true
+//             });
+//             winnerWithZeroPress = true;
+//         }
+//     }
+
+//     if (!winners.some(w => w.isWinner)) {
+//         let fallbackButton;
+
+//         // Pick a random button with 0 presses
+//         const zeroPressButtons = buttonResults.filter(b => b.pressCount === 0);
+//         if (zeroPressButtons.length > 0) {
+//             fallbackButton = zeroPressButtons[Math.floor(Math.random() * zeroPressButtons.length)];
+//         }
+
+//         if (fallbackButton) {
+//             winners.push({
+//                 buttonNumber: fallbackButton.buttonNumber,
+//                 amount: fallbackButton.finalAmount,
+//                 payOutAmount: fallbackButton.payOutAmount,
+//                 isWinner: true
+//             });
+//             remainingAmount = Math.max(0, remainingAmount - fallbackButton.payOutAmount);
+//         }
+//     }
+
+//     // Ensure remainingAmount never negative due to fallback
+//     if (remainingAmount < 0) remainingAmount = 0;
+
+//     return { winners, unusedAmount: remainingAmount, totalAdded: totalAdded, winnerWithZeroPress };
+// };
+
+export const determineWinners = (buttonResults, finalAmount, totalBetAmount, maxWinners = 1, isJackpotWinner = false) => {
     if (!Array.isArray(buttonResults) || buttonResults.length === 0) {
         return { winners: [], unusedAmount: finalAmount, totalAdded: 0 };
     }
 
     // Group by payOutAmount
-    const grouped = {};
-    for (const b of buttonResults) {
-        if (!grouped[b.payOutAmount]) grouped[b.payOutAmount] = [];
-        grouped[b.payOutAmount].push(b);
+    // const grouped = {};
+    // for (const b of buttonResults) {
+    //     if (!grouped[b.payOutAmount]) grouped[b.payOutAmount] = [];
+    //     grouped[b.payOutAmount].push(b);
+    // }
+
+    // // Sort payout amounts high → low, shuffle inside each group
+    // const sortedPayouts = Object.keys(grouped)
+    //     .map(Number)
+    //     .sort((a, b) => b - a);
+
+    // const sortedButtons = sortedPayouts.flatMap(payout => {
+    //     const group = grouped[payout];
+    //     for (let i = group.length - 1; i > 0; i--) {
+    //         const j = Math.floor(Math.random() * (i + 1));
+    //         [group[i], group[j]] = [group[j], group[i]];
+    //     }
+    //     return group;
+    // });
+
+    // const shuffledButtons = [...buttonResults];
+    // for (let i = shuffledButtons.length - 1; i > 0; i--) {
+    //     const j = Math.floor(Math.random() * (i + 1));
+    //     [shuffledButtons[i], shuffledButtons[j]] = [shuffledButtons[j], shuffledButtons[i]];
+    // }
+
+    const buttonResultsAfterWinnerRule = buttonResults.some(b => b.eligibleForWin) ? buttonResults.filter(b => b.eligibleForWin) : buttonResults;
+
+    function timeMixedShuffle(array) {
+        const result = [...array];
+        for (let i = result.length - 1; i > 0; i--) {
+            const random = (Math.random() + (performance.now() % 1)) % 1;
+            const j = Math.floor(random * (i + 1));
+            [result[i], result[j]] = [result[j], result[i]];
+        }
+        return result;
     }
 
-    // Sort payout amounts high → low, shuffle inside each group
-    const sortedPayouts = Object.keys(grouped)
-        .map(Number)
-        .sort((a, b) => b - a);
-
-    // Flatten buttons into one list, shuffle inside equal groups
-    const sortedButtons = sortedPayouts.flatMap(payout => {
-        const group = grouped[payout];
-        for (let i = group.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [group[i], group[j]] = [group[j], group[i]];
-        }
-        return group;
-    });
-
-    // ✅ Filter pressed buttons
-    const pressedButtons = buttonResults.filter(b => b.pressCount > 0);
+    const shuffledButtons = timeMixedShuffle([...buttonResultsAfterWinnerRule]);
 
     const winners = [];
     let remainingAmount = finalAmount;
     let totalAdded = 0;
     let winnerWithZeroPress = false;
     const MAX_TOP_UP = 50;
+    let jackpotCount = 0;
 
-    for (const button of sortedButtons) {
+    // --- Jackpot logic ---
+    if (isJackpotWinner) {
+        const jackpotButtons = timeMixedShuffle([...buttonResults]);
+        const winners = [];
+        let remainingAmount = finalAmount;
+        let totalAdded = 0;
+        let jackpotCount = 0;
+        const MAX_TOP_UP = 50; // your allowed top-up limit
+
+        // Step 1: Try to fill winners normally (affordable payouts)
+        for (const button of jackpotButtons) {
+            if (jackpotCount >= maxWinners) break;
+
+            if (button.payOutAmount > 0) {
+                if (button.payOutAmount <= remainingAmount) {
+                    winners.push({
+                        buttonNumber: button.buttonNumber,
+                        amount: button.buttonAmount,
+                        payOutAmount: button.payOutAmount,
+                        isWinner: true,
+                        winnerType: 'jackpot'
+                    });
+                    remainingAmount -= button.payOutAmount;
+                    jackpotCount++;
+                } else {
+                    const shortfall = button.payOutAmount - remainingAmount;
+                    if (remainingAmount > 0 && shortfall <= MAX_TOP_UP) {
+                        winners.push({
+                            buttonNumber: button.buttonNumber,
+                            amount: button.buttonAmount,
+                            payOutAmount: button.payOutAmount,
+                            isWinner: true,
+                            winnerType: 'jackpot'
+                        });
+                        totalAdded += shortfall;
+                        remainingAmount = 0;
+                        jackpotCount++;
+                    }
+                }
+            } else if (button.pressCount >= 1 && jackpotCount < maxWinners) {
+                winners.push({
+                    buttonNumber: button.buttonNumber,
+                    amount: button.buttonAmount,
+                    payOutAmount: 0,
+                    isWinner: true,
+                    winnerType: 'jackpot'
+                });
+                jackpotCount++;
+            }
+        }
+
+        // Step 2: Fallback — choose minimal-loss button if we still need more winners
+        if (jackpotCount < maxWinners) {
+            const remainingWinnersNeeded = maxWinners - jackpotCount;
+
+            // Filter buttons not already chosen
+            const nonWinners = jackpotButtons.filter(
+                b => !winners.some(w => w.buttonNumber === b.buttonNumber)
+            );
+
+            // Sort remaining by minimal payout (to minimize loss)
+            const sortedByMinimalLoss = nonWinners.sort((a, b) => a.payOutAmount - b.payOutAmount);
+
+            for (let i = 0; i < remainingWinnersNeeded && i < sortedByMinimalLoss.length; i++) {
+                const button = sortedByMinimalLoss[i];
+                winners.push({
+                    buttonNumber: button.buttonNumber,
+                    amount: button.buttonAmount,
+                    payOutAmount: button.payOutAmount,
+                    isWinner: true,
+                    winnerType: 'jackpot',
+                    note: 'minimal loss fallback'
+                });
+                // If payout exceeds remainingAmount, count as loss
+                if (button.payOutAmount > remainingAmount) {
+                    totalAdded += (button.payOutAmount - remainingAmount);
+                    remainingAmount = 0;
+                } else {
+                    remainingAmount -= button.payOutAmount;
+                }
+                jackpotCount++;
+            }
+        }
+
+        remainingAmount = Math.max(0, remainingAmount);
+        return { winners, unusedAmount: remainingAmount, totalAdded };
+    }
+
+    for (const button of shuffledButtons) {
+        if (winners.length >= maxWinners && !button.manualWin) break;
+
+        if (button.manualWin && button.payOutAmount > 0) {
+            winners.push({
+                buttonNumber: button.buttonNumber,
+                amount: button.finalAmount,
+                payOutAmount: button.payOutAmount,
+                isWinner: true,
+                winnerType: 'manual'
+            });
+            // Track extra needed if pool is less than payout
+            const extraNeeded = button.payOutAmount - totalBetAmount;
+            if (extraNeeded > 0) {
+                totalAdded += extraNeeded; // this will be deducted from machine deposit
+            }
+            remainingAmount = Math.max(0, totalBetAmount - button.payOutAmount); // remaining pool decreases, can go negative if needed
+            continue; // skip normal checks
+        }
+
+        // Only consider buttons with payOutAmount > 0 or pressed at least once
         if (button.payOutAmount > 0) {
             if (button.payOutAmount <= remainingAmount) {
-                // Full pay
                 winners.push({
                     buttonNumber: button.buttonNumber,
                     amount: button.finalAmount,
                     payOutAmount: button.payOutAmount,
-                    isWinner: true
+                    isWinner: true,
+                    winnerType: 'regular'
                 });
                 remainingAmount -= button.payOutAmount;
-
             } else {
                 const shortfall = button.payOutAmount - remainingAmount;
                 if (remainingAmount > 0 && shortfall <= MAX_TOP_UP) {
-                    // Pay with top-up
                     winners.push({
                         buttonNumber: button.buttonNumber,
                         amount: button.finalAmount,
                         payOutAmount: button.payOutAmount,
-                        isWinner: true
+                        isWinner: true,
+                        winnerType: 'regular'
                     });
                     totalAdded += shortfall;
                     remainingAmount = 0;
-                } else {
-                    // Cannot pay
-                    winners.push({
-                        buttonNumber: button.buttonNumber,
-                        amount: 0,
-                        payOutAmount: button.payOutAmount,
-                        isWinner: false
-                    });
                 }
+                // If cannot pay, skip this button
             }
         } else if (button.pressCount >= 1) {
-            // Fallback: any pressed button with 0 payOutAmount becomes a winner
             winners.push({
                 buttonNumber: button.buttonNumber,
-                amount: button.finalAmount, // or 1 if you want minimal
+                amount: button.finalAmount,
                 payOutAmount: button.payOutAmount,
-                isWinner: true
+                isWinner: true,
+                winnerType: 'regular'
             });
             winnerWithZeroPress = true;
         }
     }
 
-    if (!winners.some(w => w.isWinner)) {
-        let fallbackButton;
-
-        // Pick a random button with 0 presses
-        const zeroPressButtons = buttonResults.filter(b => b.pressCount === 0);
+    // Fallback in rare case: no winners or still below maxWinners
+    if (winners.length < maxWinners) {
+        const zeroPressButtons = buttonResults.filter(b => b.pressCount === 0 && !winners.some(w => w.buttonNumber === b.buttonNumber));
         if (zeroPressButtons.length > 0) {
-            fallbackButton = zeroPressButtons[Math.floor(Math.random() * zeroPressButtons.length)];
-        }
-
-        if (fallbackButton) {
+            const fallbackButton = zeroPressButtons[Math.floor(Math.random() * zeroPressButtons.length)];
             winners.push({
                 buttonNumber: fallbackButton.buttonNumber,
                 amount: fallbackButton.finalAmount,
                 payOutAmount: fallbackButton.payOutAmount,
-                isWinner: true
+                isWinner: true,
+                winnerType: 'regular'
             });
-            remainingAmount = Math.max(0, remainingAmount - fallbackButton.payOutAmount);
+            winnerWithZeroPress = true;
         }
     }
 
-    // Ensure remainingAmount never negative due to fallback
-    if (remainingAmount < 0) remainingAmount = 0;
+    // Ensure remainingAmount never negative
+    remainingAmount = Math.max(0, remainingAmount);
 
-    return { winners, unusedAmount: remainingAmount, totalAdded: totalAdded, winnerWithZeroPress };
+    return { winners, unusedAmount: remainingAmount, totalAdded, winnerWithZeroPress };
 };
 
 // export const determineWinners = (buttonResults, finalAmount) => {

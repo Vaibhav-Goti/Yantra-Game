@@ -241,3 +241,24 @@ export const getTimeRanges = (timeFrames) => {
         };
     }).sort((a, b) => a.timeMoment.diff(b.timeMoment));
 };
+
+export const isValidateTimeFormat = (time) => {
+    return moment(time, 'HH:mm', true).isValid();
+};
+
+export const formatTimeToHHMM = (time) => {
+    return moment(time, 'HH:mm', true).format('HH:mm');
+};
+
+export const validateDateFormat = (time) => {
+    if (!time) return false;
+    return moment(time, 'DD/MM/YYYY', true).isValid();
+};
+
+export const formatDate = (date) => {
+    return moment(date, 'DD/MM/YYYY', true).format('DD/MM/YYYY');
+};
+
+export const formatDate12Hour = (date) => {
+    return moment(date, 'DD/MM/YYYY', true).format('DD/MM/YYYY h:mm A');
+};
