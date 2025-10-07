@@ -5,7 +5,6 @@ export const useGameSessions = (params) => {
     const { data, isLoading, isError, error } = useQuery({
         queryKey: ['gameSessions', params],
         queryFn: ({ signal }) => getGameSessionApi(params, signal),
-        staleTime: 1000 * 60 * 5,
         retry: (failureCount, error) => {
             if (error?.response?.status === 401) {
                 return false

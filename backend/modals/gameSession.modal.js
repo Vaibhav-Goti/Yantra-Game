@@ -14,44 +14,44 @@ const gameSessionSchema = new mongoose.Schema({
     },
     startTime: {
         type: String,
-        required: true,
+        // required: true,
         trim: true
     },
     endTime: {
         type: String,
-        required: true,
+        // required: true,
         trim: true
     },
     totalDuration: {
         type: Number, // in seconds
-        required: true
+        // required: true
     },
     buttonPresses: [{
         buttonNumber: {
             type: Number,
-            required: true,
+            // required: true,
             min: 1,
             max: 12 // Assuming max 10 buttons per machine
         },
         pressCount: {
             type: Number,
-            required: true,
+            // required: true,
             min: 0
         },
         totalAmount: {
             type: Number,
-            required: true,
+            // required: true,
             min: 0
         },
     }],
     gameTimeFrames: [{
         time: {
             type: String,
-            required: true
+            // required: true
         },
         percentage: {
             type: Number,
-            required: true,
+            // required: true,
             min: 0,
             // max: 100
         },
@@ -61,12 +61,12 @@ const gameSessionSchema = new mongoose.Schema({
         },
         remainingPercentage: {
             type: Number,
-            required: true
+            // required: true
         }
     }],
     totalBetAmount: {
         type: Number,
-        required: true,
+        // required: true,
         min: 0
     },
     totalDeductedAmount: {
@@ -75,24 +75,29 @@ const gameSessionSchema = new mongoose.Schema({
     },
     finalAmount: {
         type: Number,
-        required: true,
+        // required: true,
     },
     winners: [{
         buttonNumber: {
             type: Number,
-            required: true
+            // required: true
         },
         amount: {
             type: Number,
-            required: true
+            // required: true
         },
         payOutAmount: {
             type: Number,
-            required: true
+            // required: true
         },
         isWinner: {
             type: Boolean,
             default: false
+        },
+        winnerType: {
+            type: String,
+            enum: ['regular', 'jackpot', 'manual'],
+            default: 'regular'
         }
     }],
     // 👇 new tracking fields

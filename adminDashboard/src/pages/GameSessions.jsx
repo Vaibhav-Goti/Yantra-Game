@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Card, { CardHeader, CardBody } from "../components/ui/Card";
 import Table from "../components/ui/Table";
 import Pagination from "../components/Paginate";
@@ -12,6 +12,7 @@ import Modal, { ModalHeader, ModalBody, ModalFooter } from "../components/ui/Mod
 import Button from "../components/ui/Button";
 import { useGetMachines } from "../hooks/useMachine";
 import { useGameSessions } from "../hooks/useGameSessions";
+import { formatDateTime } from "../utils/timeUtils";
 
 function GameSessions() {
   const [machineFilter, setMachineFilter] = useState("All");
@@ -22,7 +23,16 @@ function GameSessions() {
 
   // console.log(page, limit)
   const {data: machinesData, isPending: isMachinesPending, isError: isMachinesError, error: machinesError} = useGetMachines()
-  const {data: gameSessionsData, isPending: isGameSessionsPending, isError: isGameSessionsError, error: gameSessionsError} = useGameSessions({page, limit, ...(machineFilter !== "All" && { machineId: machineFilter }) })
+  const {data: gameSessionsData, isPending: isGameSessionsPending, isError: isGameSessionsError, error: gameSessionsError} = useGameSessions({page, limit, status: 'Completed', ...(machineFilter !== "All" && { machineId: machineFilter }) })
+  const {data: liveGameSessionsData, isPending: isLiveGameSessionsPending, isError: isLiveGameSessionsError, error: liveGameSessionsError} = useGameSessions({status: 'Active', ...(machineFilter !== "All" && { machineId: machineFilter }) })
+
+  // Set default machine when machines data loads
+  useEffect(() => {
+    if (machinesData?.data?.length > 0 && machineFilter === "All") {
+      // Set the first machine as default
+      setMachineFilter(machinesData.data[0]._id);
+    }
+  }, [machinesData, machineFilter]);
 
   // Show loading page if game sessions are loading
   if (isGameSessionsPending) {
@@ -82,12 +92,22 @@ function GameSessions() {
         <div className="flex flex-wrap gap-1">
           {row.winners?.length > 0 ? (
             row.winners.map((winner, i) => (
-              <span
-                key={i}
-                className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs"
-              >
-                Button {winner.buttonNumber} - ₹{winner.payOutAmount}
-              </span>
+              <div key={i} className="flex flex-col gap-1">
+                <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">
+                  Button {winner.buttonNumber} - ₹{winner.payOutAmount}
+                </span>
+                <span className={`px-2 py-1 rounded text-xs ${
+                  winner.winnerType === 'jackpot' 
+                    ? 'bg-purple-100 text-purple-700' 
+                    : winner.winnerType === 'manual' 
+                    ? 'bg-orange-100 text-orange-700' 
+                    : 'bg-blue-100 text-blue-700'
+                }`}>
+                  {winner.winnerType === 'jackpot' ? '🎰 Jackpot' : 
+                   winner.winnerType === 'manual' ? '👤 Manual' : 
+                   '🤖 Auto'}
+                </span>
+              </div>
             ))
           ) : (
             <span className="text-gray-500 text-xs">No winners</span>
@@ -131,7 +151,7 @@ function GameSessions() {
       key: "Created At",
       label: "Created At",
       render: (row) => (
-        <div className="text-xs text-gray-500">{row.createdAt}</div>
+        <div className="text-xs text-gray-500">{formatDateTime(row.createdAt)}</div>
       )
     },
   ];
@@ -190,37 +210,149 @@ function GameSessions() {
       </CardHeader>
 
       <CardBody>
-        {gameSessionsData?.data?.length > 0 ? (
-          <>
-            <Table 
-              responsive 
-              columns={columns} 
-              data={gameSessionsData.data}
-              onRowClick={handleRowClick}
-              clickable
-            />
-            <Pagination
-              currentPage={gameSessionsData?.currentPage || page}
-              totalPages={gameSessionsData?.totalPages || 1}
-              onPageChange={(p) => setPage(p)}
-              limit={limit}
-              onLimitChange={(newLimit) => {setLimit(newLimit); setPage(1)}}
-              totalItems={gameSessionsData?.count || gameSessionsData.count}
-            />
-          </>
-        ) : (
-          <div className="text-center py-8">
-            <div className="text-gray-500 text-lg mb-2">
-              {machineFilter === "All" ? 'No game sessions found' : `No sessions found for selected machine`}
-            </div>
-            <p className="text-gray-400">
-              {machineFilter === "All" 
-                ? 'Game sessions will appear here when they are created' 
-                : 'Try selecting a different machine or "All" to see all sessions'
-              }
-            </p>
+        {/* Live Session Section - Only show when a specific machine is selected */}
+        {/* {machineFilter !== "All" && (
+          <div className="mb-6">
+            <Card className="border-2 border-blue-200 bg-blue-50">
+              <CardHeader className="bg-blue-100">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-lg font-semibold text-blue-800">
+                    Live Session - {machinesData?.data?.find(m => m._id === machineFilter)?.machineName}
+                  </h4>
+                  <div className="flex items-center gap-2">
+                    {isLiveGameSessionsPending ? (
+                      <div className="flex items-center gap-2">
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
+                        <span className="text-sm text-blue-600 font-medium">Loading...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span className="text-sm text-green-600 font-medium">LIVE</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardBody>
+                {isLiveGameSessionsPending ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                      <p className="text-gray-600">Loading live session...</p>
+                    </div>
+                  </div>
+                ) : liveGameSessionsError ? (
+                  <div className="text-center py-8">
+                    <div className="text-red-500 text-lg mb-2">Failed to load live session</div>
+                    <p className="text-gray-600">{liveGameSessionsError?.message || 'Something went wrong'}</p>
+                  </div>
+                ) : liveGameSessionsData?.data?.length > 0 ? (
+                  <>
+                   
+                    {liveGameSessionsData.data.map((liveSession, sessionIndex) => (
+                      <div key={sessionIndex} className="space-y-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+                          {liveSession.buttonPresses?.map((button, index) => (
+                            <div key={index} className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                              <div className="text-center">
+                                <div className="text-lg font-bold text-gray-800">Button {button.buttonNumber}</div>
+                                <div className="text-2xl font-bold text-blue-600 mt-1">{button.pressCount || 0}</div>
+                                <div className="text-xs text-gray-500">presses</div>
+                                <div className="text-xs text-green-600 font-medium">₹{button.totalAmount || 0}</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        
+                    
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                          <div className="bg-white p-3 rounded-lg border border-gray-200">
+                            <div className="text-sm text-gray-500">Session ID</div>
+                            <div className="text-sm font-bold text-gray-800 font-mono">{liveSession.sessionId}</div>
+                          </div>
+                          <div className="bg-white p-3 rounded-lg border border-gray-200">
+                            <div className="text-sm text-gray-500">Status</div>
+                            <div className="text-lg font-bold text-green-600">{liveSession.status}</div>
+                          </div>
+                          <div className="bg-white p-3 rounded-lg border border-gray-200">
+                            <div className="text-sm text-gray-500">Total Presses</div>
+                            <div className="text-lg font-bold text-blue-600">
+                              {liveSession.buttonPresses?.reduce((total, button) => total + (button.pressCount || 0), 0) || 0}
+                            </div>
+                          </div>
+                          
+                        </div>
+                        
+                   
+                        {liveSession.gameTimeFrames && liveSession.gameTimeFrames.length > 0 && (
+                          <div className="bg-white p-3 rounded-lg border border-gray-200">
+                            <div className="text-sm text-gray-500">Current Time Frame</div>
+                            <div className="text-lg font-bold text-purple-600">
+                              {liveSession.gameTimeFrames[0]?.time} ({liveSession.gameTimeFrames[0]?.percentage}%)
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="text-gray-500 text-lg mb-2">No active session</div>
+                    <p className="text-gray-400">This machine doesn't have any active sessions</p>
+                  </div>
+                )}
+              </CardBody>
+            </Card>
           </div>
-        )}
+        )} */}
+
+        {/* Historical Sessions Table */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="text-lg font-semibold text-gray-800">Historical Sessions</h4>
+            {isGameSessionsPending && (
+              <div className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
+                <span className="text-sm text-gray-600">Loading sessions...</span>
+              </div>
+            )}
+          </div>
+          
+          <LoadingOverlay isLoading={isGameSessionsPending}>
+            {gameSessionsData?.data?.length > 0 ? (
+              <>
+                <Table 
+                  responsive 
+                  columns={columns} 
+                  data={gameSessionsData.data}
+                  onRowClick={handleRowClick}
+                  clickable
+                />
+                <Pagination
+                  currentPage={gameSessionsData?.currentPage || page}
+                  totalPages={gameSessionsData?.totalPages || 1}
+                  onPageChange={(p) => setPage(p)}
+                  limit={limit}
+                  onLimitChange={(newLimit) => {setLimit(newLimit); setPage(1)}}
+                  totalItems={gameSessionsData?.count || gameSessionsData.count}
+                />
+              </>
+            ) : (
+              <div className="text-center py-8">
+                <div className="text-gray-500 text-lg mb-2">
+                  {machineFilter === "All" ? 'No game sessions found' : `No sessions found for selected machine`}
+                </div>
+                <p className="text-gray-400">
+                  {machineFilter === "All" 
+                    ? 'Game sessions will appear here when they are created' 
+                    : 'Try selecting a different machine or "All" to see all sessions'
+                  }
+                </p>
+              </div>
+            )}
+          </LoadingOverlay>
+        </div>
       </CardBody>
 
       {/* Session Details Modal */}
@@ -236,7 +368,7 @@ function GameSessions() {
         </ModalHeader>
 
         <ModalBody className="max-h-96 overflow-y-auto">
-          {selectedSession && (
+          {selectedSession ? (
             <div className="space-y-6">
               {/* Session Info */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -322,6 +454,17 @@ function GameSessions() {
                         <div>
                           <p className="text-sm font-medium">Button {winner.buttonNumber}</p>
                           <p className="text-xs text-gray-500">Amount: ₹{winner.amount}</p>
+                          <span className={`inline-block px-2 py-1 rounded text-xs mt-1 ${
+                            winner.winnerType === 'jackpot' 
+                              ? 'bg-purple-100 text-purple-700' 
+                              : winner.winnerType === 'manual' 
+                              ? 'bg-orange-100 text-orange-700' 
+                              : 'bg-blue-100 text-blue-700'
+                          }`}>
+                            {winner.winnerType === 'jackpot' ? '🎰 Jackpot Winner' : 
+                             winner.winnerType === 'manual' ? '👤 Manual Winner' : 
+                             '🤖 Auto Winner'}
+                          </span>
                         </div>
                         <div className="text-right">
                           <p className="text-lg font-bold text-green-600">₹{winner.payOutAmount}</p>
@@ -354,11 +497,26 @@ function GameSessions() {
                             : 'bg-gray-50 border-gray-200'
                         }`}
                       >
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">Button {button.buttonNumber}</span>
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">Button {button.buttonNumber}</span>
+                            {isWinner && (
+                              <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                                WINNER
+                              </span>
+                            )}
+                          </div>
                           {isWinner && (
-                            <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-                              WINNER
+                            <span className={`inline-block px-2 py-1 rounded text-xs ${
+                              selectedSession.winners?.find(w => w.buttonNumber === button.buttonNumber)?.winnerType === 'jackpot' 
+                                ? 'bg-purple-100 text-purple-700' 
+                                : selectedSession.winners?.find(w => w.buttonNumber === button.buttonNumber)?.winnerType === 'manual' 
+                                ? 'bg-orange-100 text-orange-700' 
+                                : 'bg-blue-100 text-blue-700'
+                            }`}>
+                              {selectedSession.winners?.find(w => w.buttonNumber === button.buttonNumber)?.winnerType === 'jackpot' ? '🎰 Jackpot' : 
+                               selectedSession.winners?.find(w => w.buttonNumber === button.buttonNumber)?.winnerType === 'manual' ? '👤 Manual' : 
+                               '🤖 Auto'}
                             </span>
                           )}
                         </div>
@@ -387,6 +545,13 @@ function GameSessions() {
                   <label className="text-sm font-medium text-gray-500">Stored At</label>
                   <p className="text-sm font-mono">{new Date(selectedSession.createdAt).toLocaleString()}</p>
                 </div> */}
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-2"></div>
+                <p className="text-gray-600">Loading session details...</p>
               </div>
             </div>
           )}

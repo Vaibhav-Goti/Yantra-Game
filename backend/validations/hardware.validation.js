@@ -1,12 +1,12 @@
 import Joi from "joi";
 
 const buttonPressValidation = Joi.object({
-    machineId: Joi.string()
-        .required()
-        .messages({
-            'string.empty': 'Machine ID is required',
-            'any.required': 'Machine ID is required'
-        }),
+    // sessionId: Joi.string()
+    //     .required()
+    //     .messages({
+    //         'string.empty': 'Session ID is required',
+    //         'any.required': 'Session ID is required'
+    //     }),
     // stopTime: Joi.string()
     //     .required()
     //     .pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
@@ -15,39 +15,39 @@ const buttonPressValidation = Joi.object({
     //         'string.pattern.base': 'Stop time must be in HH:MM format (e.g., 15:30)',
     //         'any.required': 'Stop time is required'
     //     }),
-    buttonPresses: Joi.array()
-        .items(
-            Joi.object({
-                buttonNumber: Joi.number()
-                    .integer()
-                    .min(1)
-                    .max(12)
-                    .required()
-                    .messages({
-                        'number.base': 'Button number must be a number',
-                        'number.integer': 'Button number must be an integer',
-                        'number.min': 'Button number must be at least 1',
-                        'number.max': 'Button number cannot exceed 10',
-                        'any.required': 'Button number is required'
-                    }),
-                pressCount: Joi.number()
-                    .integer()
-                    .min(0)
-                    .required()
-                    .messages({
-                        'number.base': 'Press count must be a number',
-                        'number.integer': 'Press count must be an integer',
-                        'number.min': 'Press count cannot be negative',
-                        'any.required': 'Press count is required'
-                    })
-            })
-        )
-        .min(1)
-        .required()
-        .messages({
-            'array.min': 'At least one button must be provided',
-            'any.required': 'Button presses data is required'
-        })
+    // buttonPresses: Joi.array()
+    //     .items(
+    //         Joi.object({
+    //             buttonNumber: Joi.number()
+    //                 .integer()
+    //                 .min(1)
+    //                 .max(12)
+    //                 .required()
+    //                 .messages({
+    //                     'number.base': 'Button number must be a number',
+    //                     'number.integer': 'Button number must be an integer',
+    //                     'number.min': 'Button number must be at least 1',
+    //                     'number.max': 'Button number cannot exceed 10',
+    //                     'any.required': 'Button number is required'
+    //                 }),
+    //             pressCount: Joi.number()
+    //                 .integer()
+    //                 .min(0)
+    //                 .required()
+    //                 .messages({
+    //                     'number.base': 'Press count must be a number',
+    //                     'number.integer': 'Press count must be an integer',
+    //                     'number.min': 'Press count cannot be negative',
+    //                     'any.required': 'Press count is required'
+    //                 })
+    //         })
+    //     )
+    //     .min(1)
+    //     .required()
+    //     .messages({
+    //         'array.min': 'At least one button must be provided',
+    //         'any.required': 'Button presses data is required'
+    //     })
 });
 
 const gameResultValidation = Joi.object({

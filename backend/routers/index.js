@@ -23,4 +23,13 @@ router.use('/api/v1/hardware', hardwareRouter)
 import dashboardRouter from '../routers/dashboard.router.js'
 router.use('/api/v1/dashboard', dashboardRouter)
 
+// import masterWinnerTimeframeRouter from './masterWinnerTimeframe.router.js'
+// router.use('/api/v1/masterwinner', masterWinnerTimeframeRouter)
+
+import winnerRuleRouter from '../routers/winnerRule.router.js'
+router.use('/api/v1/winnerrule', winnerRuleRouter)
+
+import jackpotWinnerRouter from '../routers/jackpotWinner.router.js'
+router.use('/api/v1/jackpotwinner', jackpotWinnerRouter)
+
 export default router;
