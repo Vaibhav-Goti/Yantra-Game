@@ -68,7 +68,15 @@ const ChangePassword = () => {
       newPassword: formData.newPassword
     }
 
-    changePassword(data)
+    changePassword(data, {
+      onSuccess: () => {
+        setFormData({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: ""
+        })
+      }
+    })
   };
 
   return (

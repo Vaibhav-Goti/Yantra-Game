@@ -32,6 +32,7 @@ export const generateTransactionHistoryPDF = (transactions, machines, selectedMa
         `Rs.${(Number(t.finalAmount) || 0).toFixed(2)}`,
         `Rs.${(Number(t.deductedAmount) || 0).toFixed(2)}`,
         `Rs.${(Number(t.unusedAmount) || 0).toFixed(2)}`,
+        `Rs.${(Number(t.totalAdded) || 0).toFixed(2)}`,
         `Rs.${(Number(t.percentageDeducted) || 0).toFixed(1)}`,
         `Rs.${(Number(t.remainingBalance) || 0).toFixed(2)}`,
         t.note || '-'
@@ -39,7 +40,7 @@ export const generateTransactionHistoryPDF = (transactions, machines, selectedMa
 
     const columns = [
         'Date & Time', 'Machine', 'Added Amount', 'Withdrawn Amount', 'Payout Amount',
-        'Total Bet', 'Final Amount', 'Deducted', 'Unused', 'Percentage', 'Balance', 'Note'
+        'Total Bet', 'Final Amount', 'Deducted', 'Unused', 'Total Added', 'Percentage', 'Balance', 'Note'
     ];
 
     // ---------- Table ----------
@@ -71,9 +72,10 @@ export const generateTransactionHistoryPDF = (transactions, machines, selectedMa
             6: { halign: 'right' },
             7: { halign: 'right' },
             8: { halign: 'right' },
-            9: { halign: 'center' },
-            10: { halign: 'right' },
-            11: { halign: 'left', overflow: 'linebreak' } // Notes column wraps text
+            9: { halign: 'right' },
+            10: { halign: 'center' },
+            11: { halign: 'right' },
+            12: { halign: 'left', overflow: 'linebreak' } // Notes column wraps text
         },
         margin: { top: 30, left: 8, right: 8, bottom: 20 },
         tableWidth: 'auto',
@@ -95,6 +97,8 @@ export const generateTransactionHistoryPDF = (transactions, machines, selectedMa
         final: transactions.reduce((a, t) => a + (Number(t.finalAmount) || 0), 0),
         deducted: transactions.reduce((a, t) => a + (Number(t.deductedAmount) || 0), 0),
         unused: transactions.reduce((a, t) => a + (Number(t.unusedAmount) || 0), 0),
+        totalAdded: transactions.reduce((a, t) => a + (Number(t.totalAdded) || 0), 0),
+        machineBalance: transactions.reduce((a, t) => a + (Number(t.remainingBalance) || 0), 0),
         count: transactions.length
     };
 
@@ -116,6 +120,8 @@ export const generateTransactionHistoryPDF = (transactions, machines, selectedMa
                 ['Total Final', `Rs.${totals.final.toFixed(2)}`],
                 ['Total Deducted', `Rs.${totals.deducted.toFixed(2)}`],
                 ['Total Unused', `Rs.${totals.unused.toFixed(2)}`],
+                ['Total From Machine', `Rs.${totals.totalAdded.toFixed(2)}`],
+                ['Machine Balance', `Rs.${totals.machineBalance.toFixed(2)}`],
                 ['Transactions Count', totals.count.toString()]
             ],
             startY: newFinalY,
@@ -139,6 +145,8 @@ export const generateTransactionHistoryPDF = (transactions, machines, selectedMa
                 ['Total Final', `Rs.${totals.final.toFixed(2)}`],
                 ['Total Deducted', `Rs.${totals.deducted.toFixed(2)}`],
                 ['Total Unused', `Rs.${totals.unused.toFixed(2)}`],
+                ['Total From Machine', `Rs.${totals.totalAdded.toFixed(2)}`],
+                ['Machine Balance', `Rs.${totals.machineBalance.toFixed(2)}`],
                 ['Transactions Count', totals.count.toString()]
             ],
             startY: finalY,

@@ -125,6 +125,7 @@ const MachineTransactionHistory = () => {
       { key: 'finalAmount', label: 'Final Amount' },
       { key: 'deductedAmount', label: 'Deducted Amount' },
       { key: 'unusedAmount', label: 'Unused Amount' },
+      { key: 'totalAdded', label: 'Total Added' },
       { key: 'percentageDeducted', label: 'Percentage Deducted' },
       { key: 'remainingBalance', label: 'Remaining Balance' },
       { key: 'note', label: 'Note' }
@@ -141,6 +142,7 @@ const MachineTransactionHistory = () => {
       finalAmount: `₹${transaction.finalAmount || 0}`,
       deductedAmount: `₹${transaction.deductedAmount || 0}`,
       unusedAmount: `₹${transaction.unusedAmount || 0}`,
+      totalAdded: `₹${transaction.totalAdded || 0}`,
       percentageDeducted: `${transaction.percentageDeducted || 0}`,
       remainingBalance: `₹${transaction.remainingBalance || 0}`,
       note: transaction.note,

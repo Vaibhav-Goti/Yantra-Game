@@ -336,6 +336,8 @@ export const determineWinners = (buttonResults, finalAmount, totalBetAmount, max
     let winnerWithZeroPress = false;
     const MAX_TOP_UP = 50;
     let jackpotCount = 0;
+    let totalBetAmountFromMachine = totalBetAmount;
+    let isManualWin = false;
 
     // --- Jackpot logic ---
     if (isJackpotWinner) {
@@ -429,6 +431,7 @@ export const determineWinners = (buttonResults, finalAmount, totalBetAmount, max
         if (winners.length >= maxWinners && !button.manualWin) break;
 
         if (button.manualWin && button.payOutAmount > 0) {
+            isManualWin = true;
             winners.push({
                 buttonNumber: button.buttonNumber,
                 amount: button.finalAmount,
@@ -437,11 +440,17 @@ export const determineWinners = (buttonResults, finalAmount, totalBetAmount, max
                 winnerType: 'manual'
             });
             // Track extra needed if pool is less than payout
-            const extraNeeded = button.payOutAmount - totalBetAmount;
-            if (extraNeeded > 0) {
-                totalAdded += extraNeeded; // this will be deducted from machine deposit
-            }
-            remainingAmount = Math.max(0, totalBetAmount - button.payOutAmount); // remaining pool decreases, can go negative if needed
+
+            // ✅ Only use positive available pool
+            const availablePool = Math.max(0, totalBetAmountFromMachine);
+
+            const extraNeeded = Math.max(0, button.payOutAmount - availablePool);
+
+            // Deduct payout from available pool first
+            totalBetAmountFromMachine = Math.max(0, totalBetAmountFromMachine - button.payOutAmount);
+
+            totalAdded += extraNeeded; // track only real extra
+            remainingAmount = Math.max(0, totalBetAmountFromMachine);
             continue; // skip normal checks
         }
 
@@ -502,7 +511,7 @@ export const determineWinners = (buttonResults, finalAmount, totalBetAmount, max
     // Ensure remainingAmount never negative
     remainingAmount = Math.max(0, remainingAmount);
 
-    return { winners, unusedAmount: remainingAmount, totalAdded, winnerWithZeroPress };
+    return { winners, unusedAmount: remainingAmount, totalAdded, winnerWithZeroPress, isManualWin };
 };
 
 // export const determineWinners = (buttonResults, finalAmount) => {

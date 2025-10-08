@@ -1,7 +1,7 @@
 import express from 'express';
 import { login, refreshToken, logout, changePassword, forgotPassword, resetPassword } from '../controllers/auth.contoller.js';
 import { reqBodyValidator } from '../middlewares/validator.js';
-import { userLoginValidation, forgotPasswordValidation, resetPasswordValidation } from '../validations/user.validation.js';
+import { userLoginValidation, forgotPasswordValidation, resetPasswordValidation, changePasswordValidation } from '../validations/user.validation.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
@@ -16,7 +16,7 @@ router.route('/refresh').post(refreshToken)
 router.route('/logout').post(logout)
 
 // Change password endpoint
-router.route('/change-password').post(authMiddleware, changePassword)
+router.route('/change-password').post(authMiddleware, reqBodyValidator(changePasswordValidation), changePassword)
 
 // Forgot password endpoint
 router.route('/forgot-password').post(reqBodyValidator(forgotPasswordValidation), forgotPassword)

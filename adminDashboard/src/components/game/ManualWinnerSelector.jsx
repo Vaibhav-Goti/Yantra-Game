@@ -6,6 +6,11 @@ import Input from '../ui/Input';
 import { FaPlus, FaEdit, FaTrash, FaClock } from 'react-icons/fa';
 import { useGetMachines } from '../../hooks/useMachine';
 import { useGetWinnerRules, useCreateWinnerRule, useUpdateWinnerRule, useDeleteWinnerRule } from '../../hooks/useWinnerRule';
+import { TimePicker } from '@mui/x-date-pickers/TimePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
+import { TextField } from '@mui/material';
+import moment from 'moment';
 
 const ManualWinnerSelector = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -16,8 +21,8 @@ const ManualWinnerSelector = () => {
   // Form state
   const [formData, setFormData] = useState({
     machineId: '',
-    startTime: '',
-    endTime: '',
+    startTime: null,
+    endTime: null,
     allowedButtons: []
   });
 
@@ -36,6 +41,10 @@ const ManualWinnerSelector = () => {
 
   const winnerRules = winnerRulesData?.data || [];
 
+  // Separate active and inactive rules
+  const activeRules = winnerRules.filter(rule => rule.active);
+  const inactiveRules = winnerRules.filter(rule => !rule.active);
+
   const handleButtonToggle = (buttonNumber) => {
     setFormData(prev => ({
       ...prev,
@@ -52,10 +61,18 @@ const ManualWinnerSelector = () => {
       return;
     }
 
+    // Convert 12-hour format to 24-hour format for storage
+    const submitData = {
+      machineId: formData.machineId,
+      startTime: formData.startTime ? moment(formData.startTime, 'hh:mm A').format('HH:mm') : '',
+      endTime: formData.endTime ? moment(formData.endTime, 'hh:mm A').format('HH:mm') : '',
+      allowedButtons: formData.allowedButtons
+    };
+
     if (modalMode === 'add') {
-      createWinnerRule(formData);
+      createWinnerRule(submitData);
     } else {
-      updateWinnerRule({ ...formData, id: selectedRule._id });
+      updateWinnerRule({ ...submitData, id: selectedRule._id });
     }
 
     setIsModalOpen(false);
@@ -67,8 +84,8 @@ const ManualWinnerSelector = () => {
     setModalMode('edit');
     setFormData({
       machineId: rule.machineId,
-      startTime: rule.startTime,
-      endTime: rule.endTime,
+      startTime: rule.startTime ? moment(rule.startTime, 'HH:mm').format('hh:mm A') : null,
+      endTime: rule.endTime ? moment(rule.endTime, 'HH:mm').format('hh:mm A') : null,
       allowedButtons: rule.allowedButtons || []
     });
     setIsModalOpen(true);
@@ -111,11 +128,10 @@ const ManualWinnerSelector = () => {
           key={i}
           type="button"
           onClick={() => handleButtonToggle(i)}
-          className={`w-12 h-12 rounded-lg border-2 flex items-center justify-center font-semibold transition-colors ${
-            formData.allowedButtons.includes(i)
-              ? 'bg-blue-600 text-white border-blue-600'
-              : 'bg-white text-gray-700 border-gray-300 hover:border-blue-500'
-          }`}
+          className={`w-12 h-12 rounded-lg border-2 flex items-center justify-center font-semibold transition-colors ${formData.allowedButtons.includes(i)
+            ? 'bg-blue-600 text-white border-blue-600'
+            : 'bg-white text-gray-700 border-gray-300 hover:border-blue-500'
+            }`}
         >
           {i}
         </button>
@@ -141,57 +157,115 @@ const ManualWinnerSelector = () => {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
             </div>
           ) : (
-            <div className="space-y-4">
-              {winnerRules.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  No winner rules found. Create your first rule to get started.
-                </div>
-              ) : (
-                winnerRules.map((rule) => (
-                  <div key={rule._id} className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4">
-                      <div className="flex-1">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
-                          <h4 className="font-semibold text-gray-900">
-                            {getMachineName(rule.machineId)}
-                          </h4>
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 w-fit">
-                            {rule.active ? 'Active' : 'Inactive'}
-                          </span>
-                        </div>
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm text-gray-600">
-                          <div className="flex items-center">
-                            <FaClock className="mr-1" />
-                            {rule.startTime} - {rule.endTime}
-                          </div>
-                          <div className="break-words">
-                            Allowed Buttons: {rule.allowedButtons?.join(', ') || 'None'}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          icon={<FaEdit />}
-                          onClick={() => handleEdit(rule)}
-                          className="w-full sm:w-auto"
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          variant="danger"
-                          size="sm"
-                          icon={<FaTrash />}
-                          onClick={() => handleDelete(rule._id)}
-                          className="w-full sm:w-auto"
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    </div>
+            <div className="space-y-6">
+              {/* Active Rules Section */}
+              <div>
+                <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center">
+                  <FaClock className="mr-2 text-blue-500" />
+                  Active Rules ({activeRules.length})
+                </h4>
+                {activeRules.length === 0 ? (
+                  <div className="text-center py-6 text-gray-500 bg-gray-50 rounded-lg">
+                    <FaClock className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                    <p>No active winner rules. Create your first rule to get started.</p>
                   </div>
-                ))
+                ) : (
+                  <div className="space-y-4">
+                    {activeRules.map((rule) => (
+                      <div key={rule._id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4">
+                          <div className="flex-1">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                              <h4 className="font-semibold text-gray-900">
+                                {getMachineName(rule.machineId)}
+                              </h4>
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 w-fit">
+                                Active
+                              </span>
+                            </div>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm text-gray-600">
+                              <div className="flex items-center">
+                                <FaClock className="mr-1" />
+                                {rule.startTime} - {rule.endTime}
+                              </div>
+                              <div className="break-words">
+                                Allowed Buttons: {rule.allowedButtons?.join(', ') || 'None'}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              icon={<FaEdit />}
+                              onClick={() => handleEdit(rule)}
+                              className="w-full sm:w-auto"
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              icon={<FaTrash />}
+                              onClick={() => handleDelete(rule._id)}
+                              className="w-full sm:w-auto"
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* History Section */}
+              {inactiveRules.length > 0 && (
+                <div>
+                  <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center">
+                    <FaClock className="mr-2 text-gray-500" />
+                    History ({inactiveRules.length})
+                  </h4>
+                  <div className="space-y-4">
+                    {inactiveRules.map((rule) => (
+                      <div key={rule._id} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4">
+                          <div className="flex-1">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                              <h4 className="font-semibold text-gray-700">
+                                {getMachineName(rule.machineId)}
+                              </h4>
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 w-fit">
+                                Inactive
+                              </span>
+                            </div>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm text-gray-600">
+                              <div className="flex items-center">
+                                <FaClock className="mr-1" />
+                                {rule.startTime} - {rule.endTime}
+                              </div>
+                              <div className="break-words">
+                                Allowed Buttons: {rule.allowedButtons?.join(', ') || 'None'}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              icon={<FaTrash />}
+                              onClick={() => handleDelete(rule._id)}
+                              className="w-full sm:w-auto"
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
           )}
@@ -230,6 +304,52 @@ const ManualWinnerSelector = () => {
 
               {/* Time Range */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <LocalizationProvider dateAdapter={AdapterMoment}>
+                  {/* Start Time */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Start Time *
+                    </label>
+                    <TimePicker
+                      value={formData.startTime ? moment(formData.startTime, 'hh:mm A') : null}
+                      onChange={(value) =>
+                        setFormData(prev => ({
+                          ...prev,
+                          startTime: value ? value.format('hh:mm A') : null
+                        }))
+                      }
+                      ampm
+                      enableAccessibleFieldDOMStructure={false}
+                      slots={{
+                        textField: (params) => <TextField {...params} fullWidth size="small" />
+                      }}
+                    />
+                  </div>
+
+                  {/* End Time */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      End Time *
+                    </label>
+                    <TimePicker
+                      value={formData.endTime ? moment(formData.endTime, 'hh:mm A') : null}
+                      onChange={(value) =>
+                        setFormData(prev => ({
+                          ...prev,
+                          endTime: value ? value.format('hh:mm A') : null
+                        }))
+                      }
+                      ampm
+                      enableAccessibleFieldDOMStructure={false}
+                      slots={{
+                        textField: (params) => <TextField {...params} fullWidth size="small" />
+                      }}
+                    />
+                  </div>
+                </LocalizationProvider>
+              </div>
+
+              {/* <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Start Time *
@@ -252,7 +372,7 @@ const ManualWinnerSelector = () => {
                     required
                   />
                 </div>
-              </div>
+              </div> */}
 
               {/* Button Selection */}
               <div>

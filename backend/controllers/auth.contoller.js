@@ -145,10 +145,10 @@ export const changePassword = catchAsyncError(async (req, res, next) => {
     const isPasswordMatch = await verifyHashPassword(oldPassword, user.password)
     if (!isPasswordMatch) return next(new ErrorHandler('Invalid Password!', 400))
 
-    console.log('Before save - newPassword:', newPassword)
+    // console.log('Before save - newPassword:', newPassword)
     user.password = newPassword
     await user.save()
-    console.log('After save - user.password:', user.password)
+    // console.log('After save - user.password:', user.password)
 
     res.status(200).json({
         success: true,
@@ -220,6 +220,7 @@ export const resetPassword = catchAsyncError(async (req, res, next) => {
         await sendPasswordResetConfirmation(user.email)
     } catch (error) {
         console.log('Failed to send confirmation email:', error.message)
+        return next(new ErrorHandler('Failed to send confirmation email. Please try again.', 500))
         // Don't fail the request if confirmation email fails
     }
 

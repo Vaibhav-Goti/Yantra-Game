@@ -66,6 +66,7 @@ function MachineTimeFrames() {
     const [machineTimeFrames, setMachineTimeFrames] = useState([]);
     const [localEdits, setLocalEdits] = useState({});
     const [applyToAllPercentage, setApplyToAllPercentage] = useState('');
+    const [multipleValues, setMultipleValues] = useState('');
     const [showModal, setShowModal] = useState(false);
     const [editFrame, setEditFrame] = useState(null);
     const [formData, setFormData] = useState({
@@ -112,11 +113,11 @@ function MachineTimeFrames() {
             // Fetch time frames for this machine
             timeFramesByMachine({ machineId }, {
                 onSuccess: (data) => {
-                  setMachineTimeFrames(data.data);
-                  setLocalEdits((prev) => ({ ...prev, [machineId]: data.data }));
+                    setMachineTimeFrames(data.data);
+                    setLocalEdits((prev) => ({ ...prev, [machineId]: data.data }));
                 },
                 onError: (error) => {
-                  console.error('Error fetching time frames:', error);
+                    console.error('Error fetching time frames:', error);
                 }
             });
         }
@@ -158,13 +159,37 @@ function MachineTimeFrames() {
         }
     };
 
+    // Parse multiple values from comma-separated string
+    const parseMultipleValues = (valueString) => {
+        if (!valueString) return [];
+        return valueString.split(',').map(val => val.trim()).filter(val => val !== '' && !isNaN(val));
+    };
+
+    // Handle apply multiple values to time frames
+    const handleApplyMultipleValues = (machineId) => {
+        const values = parseMultipleValues(multipleValues);
+        if (values.length === 0) return;
+
+        const currentTimeFrames = localEdits[machineId] || timeFramesByMachineData?.data || [];
+
+        const updatedTimeFrames = currentTimeFrames.map((timeFrame, index) => ({
+            ...timeFrame,
+            percentage: values[index % values.length] // Cycle through values if more time frames than values
+        }));
+
+        setLocalEdits((prev) => ({
+            ...prev,
+            [machineId]: updatedTimeFrames
+        }));
+    };
+
     // Handle apply to all
     const handelSaveChanges = (machineId) => {
         const machineData = localEdits[machineId] || [];
-       
+
         if (machineData.length > 0) {
             const data = machineData?.map(timeFrame => {
-                    return {
+                return {
                     _id: timeFrame._id,
                     percentage: Number(timeFrame.percentage)
                 };
@@ -176,6 +201,7 @@ function MachineTimeFrames() {
             }, {
                 onSuccess: () => {
                     setApplyToAllPercentage('');
+                    setMultipleValues('');
                     // Refresh the data after successful update
                     timeFramesByMachine({ machineId }, {
                         onSuccess: (data) => {
@@ -476,113 +502,142 @@ function MachineTimeFrames() {
                                                             ) : (
                                                                 <>
                                                                     {/* Apply to All Section */}
-                                                                    <div className="mb-4 flex flex-col sm:flex-row items-center gap-3">
-                                                    <Input
-                                                        type="number"
-                                                        placeholder="Apply percentage to all (0–100)"
-                                                        value={applyToAllPercentage}
-                                                        onChange={(e) => setApplyToAllPercentage(e.target.value)}
-                                                        min="0"
-                                                        max="100"
-                                                        className="w-full sm:w-1/3"
-                                                    />
-                                                    <Button
-                                                        onClick={() => {
-                                                            if (!applyToAllPercentage) return;
-                                                            setLocalEdits((prev) => ({
-                                                                ...prev,
-                                                                [machine._id]:
-                                                                    prev[machine._id]?.map((tf) => ({
-                                                                        ...tf,
-                                                                        percentage: Number(applyToAllPercentage),
-                                                                    })) ||
-                                                                    (timeFramesByMachineData?.data || []).map((tf) => ({
-                                                                        ...tf,
-                                                                        percentage: Number(applyToAllPercentage),
-                                                                    })),
-                                                            }));
-                                                        }}
-                                                        className="bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                        disabled={!applyToAllPercentage || isNaN(applyToAllPercentage) || applyToAllPercentage < 0 || applyToAllPercentage > 100}
-                                                    >
-                                                        Apply to All
-                                                    </Button>
-                                                </div>
+                                                                    <div className="mb-4 space-y-3">
+                                                                        {/* Single Value Apply */}
+                                                                        {/* <div className="flex flex-col sm:flex-row items-center gap-3">
+                                                                            <Input
+                                                                                type="number"
+                                                                                placeholder="Apply single percentage to all (0–100)"
+                                                                                value={applyToAllPercentage}
+                                                                                onChange={(e) => setApplyToAllPercentage(e.target.value)}
+                                                                                min="0"
+                                                                                max="100"
+                                                                                className="w-full sm:w-1/3"
+                                                                            />
+                                                                            <Button
+                                                                                onClick={() => {
+                                                                                    if (!applyToAllPercentage) return;
+                                                                                    setLocalEdits((prev) => ({
+                                                                                        ...prev,
+                                                                                        [machine._id]:
+                                                                                            prev[machine._id]?.map((tf) => ({
+                                                                                                ...tf,
+                                                                                                percentage: Number(applyToAllPercentage),
+                                                                                            })) ||
+                                                                                            (timeFramesByMachineData?.data || []).map((tf) => ({
+                                                                                                ...tf,
+                                                                                                percentage: Number(applyToAllPercentage),
+                                                                                            })),
+                                                                                    }));
+                                                                                }}
+                                                                                className="bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                                disabled={!applyToAllPercentage || isNaN(applyToAllPercentage) || applyToAllPercentage < 0 || applyToAllPercentage > 100}
+                                                                            >
+                                                                                Apply Single Value
+                                                                            </Button>
+                                                                        </div> */}
 
-                                                {/* Time Frames in Grid (NO SCROLLBAR) */}
-                                                <div
-                                                    className="grid gap-4 sm:gap-3 md:grid-cols-3 sm:grid-cols-2 grid-cols-1"
-                                                    style={{ overflow: "hidden" }}
-                                                >
-                                                    {(localEdits[machine._id] || timeFramesByMachineData?.data || []).map(
-                                                        (timeFrame, index) => (
-                                                            <div
-                                                                key={timeFrame._id || index}
-                                                                className="flex flex-col gap-2 p-3 bg-white rounded-lg shadow-sm border border-gray-200"
-                                                            >
-                                                                <div className="flex items-center justify-between">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <FaRegClock className="text-gray-400 text-sm" />
-                                                                        <span className="font-medium text-gray-700 text-sm sm:text-base">
-                                                                            {timeFrame.time}
-                                                                        </span>
+                                                                        {/* Multiple Values Apply */}
+                                                                        <div className="flex flex-col sm:flex-row items-center gap-3">
+                                                                            <Input
+                                                                                type="text"
+                                                                                placeholder="Apply multiple values (e.g., 10,30,50)"
+                                                                                value={multipleValues}
+                                                                                onChange={(e) => setMultipleValues(e.target.value)}
+                                                                                className="w-full sm:w-1/3"
+                                                                            />
+                                                                            <Button
+                                                                                onClick={() => handleApplyMultipleValues(machine._id)}
+                                                                                className="bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                                disabled={!multipleValues || parseMultipleValues(multipleValues).length === 0}
+                                                                            >
+                                                                                Apply All
+                                                                            </Button>
+                                                                        </div>
+
+                                                                        {/* Help Text */}
+                                                                        <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+                                                                            <strong>Examples:</strong><br />
+                                                                            • Single value: <code>25</code> (applies 25% to all time frames)<br />
+                                                                            • Multiple values: <code>10,30,50</code> (applies 10%, 30%, 50% sequentially, cycling if more time frames than values)
+                                                                        </div>
                                                                     </div>
-                                                                </div>
 
-                                                                <Input
-                                                                    type="number"
-                                                                    min="0"
-                                                                    max="100"
-                                                                    value={timeFrame.percentage}
-                                                                    onChange={(e) => {
-                                                                        const newVal = e.target.value;
-                                                                        setLocalEdits((prev) => ({
-                                                                            ...prev,
-                                                                            [machine._id]:
-                                                                                (prev[machine._id] ||
-                                                                                    timeFramesByMachineData?.data)?.map((tf) =>
-                                                                                        tf._id === timeFrame._id
-                                                                                            ? { ...tf, percentage: newVal }
-                                                                                            : tf
-                                                                                    ),
-                                                                        }));
-                                                                    }}
-                                                                    className="w-full text-center text-sm sm:text-base"
-                                                                    disabled={isUpdateBulkTimeFramesPending}
-                                                                />
-                                                            </div>
-                                                        )
-                                                    )}
-                                                </div>
+                                                                    {/* Time Frames in Grid (NO SCROLLBAR) */}
+                                                                    <div
+                                                                        className="grid gap-4 sm:gap-3 md:grid-cols-3 sm:grid-cols-2 grid-cols-1"
+                                                                        style={{ overflow: "hidden" }}
+                                                                    >
+                                                                        {(localEdits[machine._id] || timeFramesByMachineData?.data || []).map(
+                                                                            (timeFrame, index) => (
+                                                                                <div
+                                                                                    key={timeFrame._id || index}
+                                                                                    className="flex flex-col gap-2 p-3 bg-white rounded-lg shadow-sm border border-gray-200"
+                                                                                >
+                                                                                    <div className="flex items-center justify-between">
+                                                                                        <div className="flex items-center gap-2">
+                                                                                            <FaRegClock className="text-gray-400 text-sm" />
+                                                                                            <span className="font-medium text-gray-700 text-sm sm:text-base">
+                                                                                                {timeFrame.time}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    </div>
 
-                                                {/* Save / Cancel Buttons */}
-                                                <div className="flex justify-end gap-3 mt-6">
-                                                    <Button
-                                                        variant="secondary"
-                                                        className="bg-gray-200 hover:bg-gray-300"
-                                                        onClick={() => {
-                                                            setLocalEdits((prev) => {
-                                                                const newEdits = { ...prev };
-                                                                delete newEdits[machine._id];
-                                                                return newEdits;
-                                                            });
-                                                            setApplyToAllPercentage("");
-                                                        }}
-                                                    >
-                                                        Cancel
-                                                    </Button>
+                                                                                    <Input
+                                                                                        type="number"
+                                                                                        min="0"
+                                                                                        max="100"
+                                                                                        value={timeFrame.percentage}
+                                                                                        onChange={(e) => {
+                                                                                            const newVal = e.target.value;
+                                                                                            setLocalEdits((prev) => ({
+                                                                                                ...prev,
+                                                                                                [machine._id]:
+                                                                                                    (prev[machine._id] ||
+                                                                                                        timeFramesByMachineData?.data)?.map((tf) =>
+                                                                                                            tf._id === timeFrame._id
+                                                                                                                ? { ...tf, percentage: newVal }
+                                                                                                                : tf
+                                                                                                        ),
+                                                                                            }));
+                                                                                        }}
+                                                                                        className="w-full text-center text-sm sm:text-base"
+                                                                                        disabled={isUpdateBulkTimeFramesPending}
+                                                                                    />
+                                                                                </div>
+                                                                            )
+                                                                        )}
+                                                                    </div>
 
-                                                    <Button
-                                                        className="bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                                                        onClick={() => {
-                                                            handelSaveChanges(machine._id);   
-                                                        }}
-                                                        disabled={isUpdateBulkTimeFramesPending}
-                                                        loading={isUpdateBulkTimeFramesPending}
-                                                    >
-                                                        {isUpdateBulkTimeFramesPending ? 'Saving...' : 'Save Changes'}
-                                                    </Button>
-                                                </div>
+                                                                    {/* Save / Cancel Buttons */}
+                                                                    <div className="flex justify-end gap-3 mt-6">
+                                                                        <Button
+                                                                            variant="secondary"
+                                                                            className="bg-gray-200 hover:bg-gray-300"
+                                                                            onClick={() => {
+                                                                                setLocalEdits((prev) => {
+                                                                                    const newEdits = { ...prev };
+                                                                                    delete newEdits[machine._id];
+                                                                                    return newEdits;
+                                                                                });
+                                                                                setApplyToAllPercentage("");
+                                                                                setMultipleValues("");
+                                                                            }}
+                                                                        >
+                                                                            Cancel
+                                                                        </Button>
+
+                                                                        <Button
+                                                                            className="bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                                                            onClick={() => {
+                                                                                handelSaveChanges(machine._id);
+                                                                            }}
+                                                                            disabled={isUpdateBulkTimeFramesPending}
+                                                                            loading={isUpdateBulkTimeFramesPending}
+                                                                        >
+                                                                            {isUpdateBulkTimeFramesPending ? 'Saving...' : 'Save Changes'}
+                                                                        </Button>
+                                                                    </div>
                                                                 </>
                                                             )}
                                                         </>
