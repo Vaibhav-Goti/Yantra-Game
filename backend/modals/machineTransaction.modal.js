@@ -39,6 +39,11 @@ const machineTransactionSchema = new mongoose.Schema({
         default: 0,
         min: 0
     },
+    totalAdded: {
+        type: Number,
+        default: 0,
+        min: 0
+    },
     payoutAmount: {
         type: Number,
         default: 0,

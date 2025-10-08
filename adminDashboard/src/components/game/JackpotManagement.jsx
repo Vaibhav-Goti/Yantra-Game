@@ -3,9 +3,14 @@ import Card, { CardHeader, CardBody } from '../ui/Card';
 import Button from '../ui/Button';
 import Modal, { ModalHeader, ModalBody, ModalFooter } from '../ui/Modal';
 import Input from '../ui/Input';
+import { TimePicker } from '@mui/x-date-pickers/TimePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
+import { TextField } from '@mui/material';
 import { FaPlus, FaEdit, FaTrash, FaClock, FaTrophy, FaUsers } from 'react-icons/fa';
 import { useGetMachines } from '../../hooks/useMachine';
 import { useGetJackpotWinners, useCreateJackpotWinner, useUpdateJackpotWinner, useDeleteJackpotWinner } from '../../hooks/useJackpotWinner';
+import moment from 'moment';
 
 const JackpotManagement = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -16,8 +21,8 @@ const JackpotManagement = () => {
   // Form state
   const [formData, setFormData] = useState({
     machineId: '',
-    startTime: '',
-    endTime: '',
+    startTime: null,
+    endTime: null,
     maxWinners: ''
   });
 
@@ -36,9 +41,13 @@ const JackpotManagement = () => {
 
   const jackpotWinners = jackpotWinnersData?.data || [];
 
+  // Separate active and inactive jackpots
+  const activeJackpots = jackpotWinners.filter(jackpot => jackpot.active);
+  const inactiveJackpots = jackpotWinners.filter(jackpot => !jackpot.active);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.machineId || !formData.startTime || !formData.endTime || !formData.maxWinners) {
       return;
     }
@@ -48,8 +57,11 @@ const JackpotManagement = () => {
       return;
     }
 
+    // Convert 12-hour format to 24-hour format for storage
     const submitData = {
-      ...formData,
+      machineId: formData.machineId,
+      startTime: formData.startTime ? moment(formData.startTime, 'hh:mm A').format('HH:mm') : '',
+      endTime: formData.endTime ? moment(formData.endTime, 'hh:mm A').format('HH:mm') : '',
       maxWinners: parseInt(formData.maxWinners)
     };
 
@@ -68,8 +80,8 @@ const JackpotManagement = () => {
     setModalMode('edit');
     setFormData({
       machineId: jackpot.machineId,
-      startTime: jackpot.startTime,
-      endTime: jackpot.endTime,
+      startTime: jackpot.startTime ? moment(jackpot.startTime, 'HH:mm').format('hh:mm A') : null,
+      endTime: jackpot.endTime ? moment(jackpot.endTime, 'HH:mm').format('hh:mm A') : null,
       maxWinners: jackpot.maxWinners
     });
     setIsModalOpen(true);
@@ -86,8 +98,8 @@ const JackpotManagement = () => {
   const resetForm = () => {
     setFormData({
       machineId: '',
-      startTime: '',
-      endTime: '',
+      startTime: null,
+      endTime: null,
       maxWinners: ''
     });
     setSelectedJackpot(null);
@@ -107,10 +119,10 @@ const JackpotManagement = () => {
   const isCurrentlyActive = (jackpot) => {
     const now = new Date();
     const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-    
+
     const startTime = jackpot.startTime;
     const endTime = jackpot.endTime;
-    
+
     return currentTime >= startTime && currentTime <= endTime && jackpot.active;
   };
 
@@ -154,61 +166,123 @@ const JackpotManagement = () => {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
             </div>
           ) : (
-            <div className="space-y-4">
-              {jackpotWinners.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <FaTrophy className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                  <p>No jackpot winners configured. Create your first jackpot to get started.</p>
-                </div>
-              ) : (
-                jackpotWinners.map((jackpot) => (
-                  <div key={jackpot._id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                    <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4">
-                      <div className="flex-1">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
-                          <h4 className="font-semibold text-gray-900 flex items-center">
-                            <FaTrophy className="mr-2 text-yellow-500" />
-                            {getMachineName(jackpot.machineId)}
-                          </h4>
-                          {getStatusBadge(jackpot)}
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm text-gray-600">
-                          <div className="flex items-center">
-                            <FaClock className="mr-2" />
-                            <span>{jackpot.startTime} - {jackpot.endTime}</span>
-                          </div>
-                          <div className="flex items-center">
-                            <FaUsers className="mr-2" />
-                            <span>Max Winners: {jackpot.maxWinners}</span>
-                          </div>
-                          <div className="text-xs text-gray-500 sm:col-span-2 lg:col-span-1">
-                            Created: {new Date(jackpot.createdAt).toLocaleDateString()}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          icon={<FaEdit />}
-                          onClick={() => handleEdit(jackpot)}
-                          className="w-full sm:w-auto"
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          variant="danger"
-                          size="sm"
-                          icon={<FaTrash />}
-                          onClick={() => handleDelete(jackpot._id)}
-                          className="w-full sm:w-auto"
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    </div>
+            <div className="space-y-6">
+              {/* Active Jackpots Section */}
+              <div>
+                <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center">
+                  <FaTrophy className="mr-2 text-yellow-500" />
+                  Active Jackpots ({activeJackpots.length})
+                </h4>
+                {activeJackpots.length === 0 ? (
+                  <div className="text-center py-6 text-gray-500 bg-gray-50 rounded-lg">
+                    <FaTrophy className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                    <p>No active jackpots. Create your first jackpot to get started.</p>
                   </div>
-                ))
+                ) : (
+                  <div className="space-y-4">
+                    {activeJackpots.map((jackpot) => (
+                      <div key={jackpot._id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4">
+                          <div className="flex-1">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                              <h4 className="font-semibold text-gray-900 flex items-center">
+                                <FaTrophy className="mr-2 text-yellow-500" />
+                                {getMachineName(jackpot.machineId)}
+                              </h4>
+                              {getStatusBadge(jackpot)}
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm text-gray-600">
+                              <div className="flex items-center">
+                                <FaClock className="mr-2" />
+                                <span>{jackpot.startTime} - {jackpot.endTime}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <FaUsers className="mr-2" />
+                                <span>Max Winners: {jackpot.maxWinners}</span>
+                              </div>
+                              <div className="text-xs text-gray-500 sm:col-span-2 lg:col-span-1">
+                                Created: {new Date(jackpot.createdAt).toLocaleDateString()}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              icon={<FaEdit />}
+                              onClick={() => handleEdit(jackpot)}
+                              className="w-full sm:w-auto"
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              icon={<FaTrash />}
+                              onClick={() => handleDelete(jackpot._id)}
+                              className="w-full sm:w-auto"
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* History Section */}
+              {inactiveJackpots.length > 0 && (
+                <div>
+                  <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center">
+                    <FaClock className="mr-2 text-gray-500" />
+                    History ({inactiveJackpots.length})
+                  </h4>
+                  <div className="space-y-4">
+                    {inactiveJackpots.map((jackpot) => (
+                      <div key={jackpot._id} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4">
+                          <div className="flex-1">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                              <h4 className="font-semibold text-gray-700 flex items-center">
+                                <FaTrophy className="mr-2 text-gray-500" />
+                                {getMachineName(jackpot.machineId)}
+                              </h4>
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                Inactive
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm text-gray-600">
+                              <div className="flex items-center">
+                                <FaClock className="mr-2" />
+                                <span>{jackpot.startTime} - {jackpot.endTime}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <FaUsers className="mr-2" />
+                                <span>Max Winners: {jackpot.maxWinners}</span>
+                              </div>
+                              <div className="text-xs text-gray-500 sm:col-span-2 lg:col-span-1">
+                                Created: {new Date(jackpot.createdAt).toLocaleDateString()}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              icon={<FaTrash />}
+                              onClick={() => handleDelete(jackpot._id)}
+                              className="w-full sm:w-auto"
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
           )}
@@ -225,10 +299,10 @@ const JackpotManagement = () => {
         </ModalHeader>
         <form onSubmit={handleSubmit}>
           <ModalBody>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {/* Machine Selection */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-0.5">
                   Machine *
                 </label>
                 <select
@@ -248,33 +322,54 @@ const JackpotManagement = () => {
 
               {/* Time Range */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Start Time *
-                  </label>
-                  <Input
-                    type="time"
-                    value={formData.startTime}
-                    onChange={(e) => setFormData(prev => ({ ...prev, startTime: e.target.value }))}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    End Time *
-                  </label>
-                  <Input
-                    type="time"
-                    value={formData.endTime}
-                    onChange={(e) => setFormData(prev => ({ ...prev, endTime: e.target.value }))}
-                    required
-                  />
-                </div>
+                <LocalizationProvider dateAdapter={AdapterMoment}>
+                  {/* Start Time */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Start Time *
+                    </label>
+                    <TimePicker
+                      value={formData.startTime ? moment(formData.startTime, 'hh:mm A') : null}
+                      onChange={(value) =>
+                        setFormData(prev => ({
+                          ...prev,
+                          startTime: value ? value.format('hh:mm A') : null
+                        }))
+                      }
+                      ampm
+                      enableAccessibleFieldDOMStructure={false}
+                      slots={{
+                        textField: (params) => <TextField {...params} fullWidth size="small" />
+                      }}
+                    />
+                  </div>
+
+                  {/* End Time */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      End Time *
+                    </label>
+                    <TimePicker
+                      value={formData.endTime ? moment(formData.endTime, 'hh:mm A') : null}
+                      onChange={(value) =>
+                        setFormData(prev => ({
+                          ...prev,
+                          endTime: value ? value.format('hh:mm A') : null
+                        }))
+                      }
+                      ampm
+                      enableAccessibleFieldDOMStructure={false}
+                      slots={{
+                        textField: (params) => <TextField {...params} fullWidth size="small" />
+                      }}
+                    />
+                  </div>
+                </LocalizationProvider>
               </div>
 
               {/* Max Winners */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-0.5">
                   Maximum Winners *
                 </label>
                 <Input

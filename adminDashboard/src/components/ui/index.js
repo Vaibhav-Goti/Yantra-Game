@@ -10,3 +10,4 @@ export { default as Search } from './Search';
 export { default as Filter, FilterChips } from './Filter';
 export { default as StatusBadge, MachineStatusBadge, GameStatusBadge } from './StatusBadge';
 export { default as Loading, LoadingOverlay, LoadingPage } from './Loading';
+export { default as TimePicker } from './TimePicker';

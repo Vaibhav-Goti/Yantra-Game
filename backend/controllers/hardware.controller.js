@@ -73,6 +73,10 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
 
     // Generate current time in IST (Indian Standard Time), 24-hour HH:mm
     const stopTime = moment().tz("Asia/Kolkata").format("HH:mm");
+    console.log('stopTime', stopTime);
+
+    const utcTime = moment().utc().format("HH:mm");
+    console.log('utcTime', utcTime);
     // console.log('stopTime', stopTime);
 
     // Start database transaction for atomic operations
@@ -91,11 +95,11 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
             throw new ErrorHandler('Machine is not active', 400);
         }
 
-         // Find the relevant timeframe for this stop time
-         const stopMoment = moment(stopTime, 'HH:mm', true);
-         if (!stopMoment.isValid()) {
-             throw new ErrorHandler('Invalid stop time format', 400);
-         }
+        // Find the relevant timeframe for this stop time
+        const stopMoment = moment(stopTime, 'HH:mm', true);
+        if (!stopMoment.isValid()) {
+            throw new ErrorHandler('Invalid stop time format', 400);
+        }
 
         // // Validate game session data
         // const validation = validateGameSession(req.body);
@@ -160,33 +164,38 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
         let maxWinners = 1;
 
         // Check if jackpot winner is active
-        const jackpotWinner = await jackpotWinnerModal.findOne({ machineId, active: true }).session(session);
+        const jackpotWinner = await jackpotWinnerModal.findOne({ machineId, active: true, startTime: { $lte: stopTime }, endTime: { $gte: stopTime } }).session(session);
         if (jackpotWinner) {
             const currentTime = moment(stopTime, "HH:mm");
             const jackpotWinnerStartTime = moment(jackpotWinner.startTime, "HH:mm");
             const jackpotWinnerEndTime = moment(jackpotWinner.endTime, "HH:mm");
-            if (currentTime.isAfter(jackpotWinnerStartTime) && currentTime.isBefore(jackpotWinnerEndTime)) {
+            if (currentTime.isSameOrAfter(jackpotWinnerStartTime) && currentTime.isSameOrBefore(jackpotWinnerEndTime)) {
                 isJackpotWinner = true;
                 maxWinners = jackpotWinner.maxWinners;
             }
+            jackpotWinner.active = false;
+            await jackpotWinner.save({ session });
         }
 
         // Check if winner rule is active
-        const winnerRule = await WinnerRule.findOne({ machineId, active: true }).session(session);
+        const winnerRule = await WinnerRule.findOne({ machineId, active: true,startTime: { $lte: stopTime }, endTime: { $gte: stopTime } }).session(session);
+        // console.log('winnerRule', winnerRule)
         if (winnerRule) {
             const currentTime = moment(stopTime, "HH:mm");
             const winnerRuleStartTime = moment(winnerRule.startTime, "HH:mm");
             const winnerRuleEndTime = moment(winnerRule.endTime, "HH:mm");
-            if (currentTime.isAfter(winnerRuleStartTime) && currentTime.isBefore(winnerRuleEndTime)) {
+            if (currentTime.isSameOrAfter(winnerRuleStartTime) && currentTime.isSameOrBefore(winnerRuleEndTime)) {
                 amountCalculation.buttonResults = amountCalculation.buttonResults.map(button => {
                     const isAllowed = winnerRule.allowedButtons.includes(button.buttonNumber);
-        
+
                     return {
                         ...button,
                         eligibleForWin: isAllowed,          // normal eligible button
                         manualWin: isAllowed // flag for manual winner if manual:true
                     };
                 });
+                winnerRule.active = false;
+                await winnerRule.save({ session });
             }
         }
 
@@ -202,7 +211,18 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
         // Adjust deposit
         let adjustedDeductedAmount = deductionAmount;
         let totalAdded = 0;
+        let isManualWin = winners?.isManualWin || false;
 
+        // if (isManualWin) {
+        //     console.log('isManualWin', isManualWin)
+        //     console.log('winners?.totalAdded', winners?.totalAdded)
+        //     totalAdded = winners?.totalAdded;
+        //     adjustedDeductedAmount = 0;
+        //     machine.depositAmount = Math.max(0, machine.depositAmount - totalAdded);
+        //     console.log('totalAdded', totalAdded)
+        //     console.log('adjustedDeductedAmount', adjustedDeductedAmount)
+        //     console.log('machine.depositAmount', machine.depositAmount)
+        // } else {
         if (!deductionFromPlayers) {
             // Payout above 100% must come from machine deposit
             // console.log('finalPool', finalPool)
@@ -225,6 +245,10 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
             // Track profits/losses
             adjustedDeductedAmount -= winners?.totalAdded;
             adjustedDeductedAmount += winners?.unusedAmount;
+            console.log('winners?.totalAdded', winners?.totalAdded)
+            console.log('winners?.unusedAmount', winners?.unusedAmount)
+            console.log('adjustedDeductedAmount', adjustedDeductedAmount)
+            console.log('winners?.totalAdded', winners?.totalAdded)
 
             console.log('winners?.totalAddToWinnerToPressCount', winners?.totalAddToWinnerToPressCount)
             if (winners?.totalAddToWinnerToPressCount > 0) {
@@ -235,13 +259,15 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
             } else {
                 console.log('adjutedDeductedAmount', adjustedDeductedAmount)
                 // Prevent negative deduction
-                adjustedDeductedAmount = Math.max(0, adjustedDeductedAmount);
+                adjustedDeductedAmount = Math.abs(adjustedDeductedAmount);
                 console.log('adjustedDeductedAmount', adjustedDeductedAmount)
                 machine.depositAmount = Math.max(0, machine.depositAmount - adjustedDeductedAmount);
                 totalAdded = winners?.totalAdded;
                 console.log('totalAdded', totalAdded)
+                console.log('machine.depositAmount', machine.depositAmount)
             }
         }
+        // }
 
         // console.log('winners', winners)
 
@@ -295,6 +321,7 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
             finalAmount: amountCalculation.finalAmount,
             deductedAmount: amountCalculation.totalDeductedAmount,
             unusedAmount: winners?.unusedAmount || 0,
+            totalAdded: totalAdded || 0,
             payoutAmount: winners?.winners.reduce((sum, winner) => sum + winner.payOutAmount, 0) || 0,
             percentageDeducted: adjustedDeductedAmount,
             remainingBalance: machine.depositAmount,
@@ -342,9 +369,9 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
                 // })),
                 winners: winners?.winners.filter(w => w.isWinner).map(winner => ({
                     buttonNumber: winner.buttonNumber,
-                    // amount: winner.amount,
-                    // payOutAmount: winner.payOutAmount,
-                    // isWinner: winner.isWinner,
+                    amount: winner.amount,
+                    payOutAmount: winner.payOutAmount,
+                    isWinner: winner.isWinner,
                     // winnerType: winner.winnerType || 'regular'
                 })),
                 // unusedAmount: winners?.unusedAmount,
