@@ -9,5 +9,5 @@ export const getGameSessionsApi = async (params, signal) => {
 }
 
 export const getGameSessionByIdApi = async (sessionId, signal) => {
-    return apiUtils('GET', `/hardware/game-session/${sessionId}`, {}, null, signal)
+    return apiUtils('GET', `/hardware/session/${sessionId}`, {}, null, signal)
 }

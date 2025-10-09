@@ -20,7 +20,7 @@ function Machines() {
   const [modalMode, setModalMode] = useState("add"); // 'add' | 'edit'
   const [selectedMachine, setSelectedMachine] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // form state
   const [formData, setFormData] = useState({
     machineName: "",
@@ -37,10 +37,10 @@ function Machines() {
   }));
 
   // api call
-  const {data, isPending, isError, error, refetch} = useGetMachines({page, limit})
-  const {mutate: addMachine, isPending: isAddMachinePending, isError: isAddMachineError, error: addMachineError} = useAddMachine()
-  const {mutate: deleteMachine, isPending: isDeleteMachinePending, isError: isDeleteMachineError, error: deleteMachineError} = useDeleteMachine()
-  const {mutate: updateMachine, isPending: isUpdateMachinePending, isError: isUpdateMachineError, error: updateMachineError} = useUpdateMachine()
+  const { data, isPending, isError, error, refetch } = useGetMachines({ page, limit })
+  const { mutate: addMachine, isPending: isAddMachinePending, isError: isAddMachineError, error: addMachineError } = useAddMachine()
+  const { mutate: deleteMachine, isPending: isDeleteMachinePending, isError: isDeleteMachineError, error: deleteMachineError } = useDeleteMachine()
+  const { mutate: updateMachine, isPending: isUpdateMachinePending, isError: isUpdateMachineError, error: updateMachineError } = useUpdateMachine()
   // console.log(data)
 
   useEffect(() => {
@@ -53,14 +53,14 @@ function Machines() {
   const handleDelete = (id) => {
     if (window.confirm("Are you sure you want to delete this machine?")) {
       console.log("Delete machine id:", id);
-      deleteMachine({id})
+      deleteMachine({ id })
     }
   };
 
   const handleStatusToggle = (machine) => {
     const newStatus = machine.status === "Active" ? "Inactive" : "Active";
     const confirmMessage = `Are you sure you want to ${newStatus === "Active" ? "activate" : "deactivate"} ${machine.machineName}?`;
-    
+
     if (window.confirm(confirmMessage)) {
       updateMachine({
         id: machine.id || machine._id,
@@ -72,25 +72,25 @@ function Machines() {
   // form validation
   const validateForm = () => {
     const errors = {};
-    
+
     if (!formData.machineName.trim()) {
       errors.machineName = "Machine name is required";
     } else if (formData.machineName.trim().length < 2) {
       errors.machineName = "Machine name must be at least 2 characters";
     }
-    
+
     if (!formData.machineNumber.trim()) {
       errors.machineNumber = "Machine number is required";
     } else if (formData.machineNumber.trim().length < 2) {
       errors.machineNumber = "Machine number must be at least 2 characters";
     }
-    
+
     if (!formData.depositAmount) {
       errors.depositAmount = "Deposit amount is required";
     } else if (isNaN(formData.depositAmount) || parseFloat(formData.depositAmount) <= 0) {
       errors.depositAmount = "Deposit amount must be a positive number";
     }
-    
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -101,7 +101,7 @@ function Machines() {
       ...prev,
       [name]: value
     }));
-    
+
     // Clear error when user starts typing
     if (formErrors[name]) {
       setFormErrors(prev => ({
@@ -137,36 +137,36 @@ function Machines() {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Validate form before submission
     if (!validateForm()) {
       return;
     }
-    
+
     setIsSubmitting(true);
-    
+
     try {
       const payload = {
         machineName: formData.machineName.trim(),
         machineNumber: formData.machineNumber.trim(),
         depositAmount: parseFloat(formData.depositAmount)
       };
-      
+
       if (modalMode === "add") {
         console.log("Adding machine:", payload);
         addMachine(payload)
       } else {
-        updateMachine({id: selectedMachine.id, ...payload})
+        updateMachine({ id: selectedMachine.id, ...payload })
       }
-      
+
       // Reset form and close modal
       setFormData({ machineName: "", machineNumber: "", depositAmount: "" });
       setFormErrors({});
       setIsModalOpen(false);
-      
+
       // TODO: Refresh the machines list
       // refetch();
-      
+
     } catch (error) {
       console.error("Error submitting form:", error);
     } finally {
@@ -185,11 +185,10 @@ function Machines() {
       render: (row) => (
         <div className="flex items-center gap-2">
           <span
-            className={`px-2 py-1 rounded-full text-xs font-medium ${
-              row.status === "Active"
+            className={`px-2 py-1 rounded-full text-xs font-medium ${row.status === "Active"
                 ? "bg-green-100 text-green-700"
                 : "bg-red-100 text-red-700"
-            }`}
+              }`}
           >
             {row.status}
           </span>
@@ -198,22 +197,20 @@ function Machines() {
               e.stopPropagation();
               handleStatusToggle(row);
             }}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
-              row.status === "Active" ? "bg-green-600" : "bg-gray-200"
-            }`}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${row.status === "Active" ? "bg-green-600" : "bg-gray-200"
+              }`}
             disabled={isUpdateMachinePending}
           >
             <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                row.status === "Active" ? "translate-x-6" : "translate-x-1"
-              }`}
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${row.status === "Active" ? "translate-x-6" : "translate-x-1"
+                }`}
             />
           </button>
         </div>
       ),
     },
-    { 
-      key: "depositAmount", 
+    {
+      key: "depositAmount",
       label: "Deposit Amount",
       render: (row) => <span>₹ {row.depositAmount?.toLocaleString() || '0'}</span>
     },
@@ -280,9 +277,9 @@ function Machines() {
       <Card>
         <CardHeader className="flex justify-between items-center">
           <h3 className="text-lg font-semibold">Machines</h3>
-          <Button 
-            variant="primary" 
-            size="sm" 
+          <Button
+            variant="primary"
+            size="sm"
             onClick={handleAdd}
             disabled={isPending}
           >
@@ -318,7 +315,7 @@ function Machines() {
                   totalPages={data?.totalPages || 1}
                   onPageChange={(p) => setPage(p)}
                   limit={limit}
-                  onLimitChange={(newLimit) => {setLimit(newLimit); setPage(1)}}
+                  onLimitChange={(newLimit) => { setLimit(newLimit); setPage(1) }}
                   totalItems={data?.totalItems || data?.count}
                 />
               </>
@@ -343,9 +340,8 @@ function Machines() {
                 name="machineName"
                 value={formData.machineName}
                 onChange={handleInputChange}
-                className={`mt-1 block w-full border rounded-md shadow-sm px-3 py-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-                  formErrors.machineName ? 'border-red-300' : 'border-gray-300'
-                }`}
+                className={`mt-1 block w-full border rounded-md shadow-sm px-3 py-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${formErrors.machineName ? 'border-red-300' : 'border-gray-300'
+                  }`}
                 placeholder="Enter machine name"
               />
               {formErrors.machineName && (
@@ -362,9 +358,8 @@ function Machines() {
                 name="machineNumber"
                 value={formData.machineNumber}
                 onChange={handleInputChange}
-                className={`mt-1 block w-full border rounded-md shadow-sm px-3 py-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-                  formErrors.machineNumber ? 'border-red-300' : 'border-gray-300'
-                }`}
+                className={`mt-1 block w-full border rounded-md shadow-sm px-3 py-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${formErrors.machineNumber ? 'border-red-300' : 'border-gray-300'
+                  }`}
                 placeholder="Enter machine number (e.g., M1, M2)"
               />
               {formErrors.machineNumber && (
@@ -372,36 +367,37 @@ function Machines() {
               )}
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Deposit Amount *
-              </label>
-              <input
-                type="number"
-                name="depositAmount"
-                value={formData.depositAmount}
-                onChange={handleInputChange}
-                className={`mt-1 block w-full border rounded-md shadow-sm px-3 py-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-                  formErrors.depositAmount ? 'border-red-300' : 'border-gray-300'
-                }`}
-                placeholder="Enter deposit amount"
-                min="0"
-                step="0.01"
-              />
-              {formErrors.depositAmount && (
-                <p className="mt-1 text-sm text-red-600">{formErrors.depositAmount}</p>
-              )}
-            </div>
+            {modalMode === "add" && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Deposit Amount *
+                </label>
+                <input
+                  type="number"
+                  name="depositAmount"
+                  value={formData.depositAmount}
+                  onChange={handleInputChange}
+                  className={`mt-1 block w-full border rounded-md shadow-sm px-3 py-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${formErrors.depositAmount ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                  placeholder="Enter deposit amount"
+                  min="0"
+                  step="0.01"
+                />
+                {formErrors.depositAmount && (
+                  <p className="mt-1 text-sm text-red-600">{formErrors.depositAmount}</p>
+                )}
+              </div>
+            )}
             <ModalFooter>
-              <Button 
-                variant="secondary" 
+              <Button
+                variant="secondary"
                 onClick={() => setIsModalOpen(false)}
                 disabled={isSubmitting}
               >
                 Cancel
               </Button>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 variant="primary"
                 loading={isAddMachinePending || isUpdateMachinePending}
                 disabled={isAddMachinePending || isUpdateMachinePending}

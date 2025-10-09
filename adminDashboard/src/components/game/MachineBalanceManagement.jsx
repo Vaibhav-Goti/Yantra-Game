@@ -6,12 +6,14 @@ import Input from '../ui/Input';
 import { FaPlus, FaMinus, FaWallet, FaHistory, FaExclamationTriangle, FaCheckCircle } from 'react-icons/fa';
 import { useGetMachines } from '../../hooks/useMachine';
 import { useAddAmountToMachine, useWithdrawAmountFromMachine } from '../../hooks/useMachineTransaction';
+import { useNavigate } from 'react-router-dom';
 
 const MachineBalanceManagement = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
   const [selectedMachine, setSelectedMachine] = useState('');
   const [machines, setMachines] = useState([]);
+  const navigate = useNavigate();
 
   // Form states
   const [addFormData, setAddFormData] = useState({
@@ -140,7 +142,7 @@ const MachineBalanceManagement = () => {
                 const StatusIcon = status.icon;
 
                 return (
-                  <div key={machine._id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                  <div key={machine._id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow" onClick={() => navigate(`/machine-transaction-history/${machine._id}`)}>
                     <div className="flex justify-between items-start mb-3">
                       <div>
                         <h4 className="font-semibold text-gray-900">{machine.machineName}</h4>
@@ -162,7 +164,10 @@ const MachineBalanceManagement = () => {
                         variant="success"
                         size="sm"
                         icon={<FaPlus />}
-                        onClick={() => openAddModal(machine._id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openAddModal(machine._id);
+                        }}
                         className="flex-1"
                       >
                         Add
@@ -171,7 +176,10 @@ const MachineBalanceManagement = () => {
                         variant="warning"
                         size="sm"
                         icon={<FaMinus />}
-                        onClick={() => openWithdrawModal(machine._id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openWithdrawModal(machine._id);
+                        }}
                         className="flex-1"
                         disabled={machine.depositAmount <= 0}
                       >

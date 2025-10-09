@@ -29,6 +29,14 @@ const machineTransactionSchema = new mongoose.Schema({
         type: Number,
         // required: true,
     },
+    applyPercentageDeducted: {
+        type: Number,
+        default: 0
+    },
+    applyPercentageValue: {
+        type: Number,
+        default: 0
+    },
     deductedAmount: {
         type: Number,
         default: 0,

@@ -539,20 +539,52 @@ function MachineTimeFrames() {
 
                                                                         {/* Multiple Values Apply */}
                                                                         <div className="flex flex-col sm:flex-row items-center gap-3">
-                                                                            <Input
-                                                                                type="text"
-                                                                                placeholder="Apply multiple values (e.g., 10,30,50)"
-                                                                                value={multipleValues}
-                                                                                onChange={(e) => setMultipleValues(e.target.value)}
-                                                                                className="w-full sm:w-1/3"
-                                                                            />
-                                                                            <Button
-                                                                                onClick={() => handleApplyMultipleValues(machine._id)}
-                                                                                className="bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                                                disabled={!multipleValues || parseMultipleValues(multipleValues).length === 0}
-                                                                            >
-                                                                                Apply All
-                                                                            </Button>
+                                                                            <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
+                                                                                <div className="flex flex-col sm:flex-row items-center gap-2 w-full">
+                                                                                    <Input
+                                                                                        type="text"
+                                                                                        placeholder="Apply multiple values (e.g., 10,30,50)"
+                                                                                        value={multipleValues}
+                                                                                        onChange={(e) => setMultipleValues(e.target.value)}
+                                                                                        className="w-full sm:w-1/2 text-lg"
+                                                                                    />
+                                                                                    <Button
+                                                                                        onClick={() => handleApplyMultipleValues(machine._id)}
+                                                                                        className="bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                                        disabled={!multipleValues || parseMultipleValues(multipleValues).length === 0}
+                                                                                    >
+                                                                                        Apply All
+                                                                                    </Button>
+                                                                                </div>
+                                                                                <div className="flex gap-3 justify-end">
+                                                                                    <Button
+                                                                                        variant="secondary"
+                                                                                        className="bg-gray-200 hover:bg-gray-300"
+                                                                                        onClick={() => {
+                                                                                            setLocalEdits((prev) => {
+                                                                                                const newEdits = { ...prev };
+                                                                                                delete newEdits[machine._id];
+                                                                                                return newEdits;
+                                                                                            });
+                                                                                            setApplyToAllPercentage("");
+                                                                                            setMultipleValues("");
+                                                                                        }}
+                                                                                    >
+                                                                                        Cancel
+                                                                                    </Button>
+
+                                                                                    <Button
+                                                                                        className="bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                                                                        onClick={() => {
+                                                                                            handelSaveChanges(machine._id);
+                                                                                        }}
+                                                                                        disabled={isUpdateBulkTimeFramesPending}
+                                                                                        loading={isUpdateBulkTimeFramesPending}
+                                                                                    >
+                                                                                        {isUpdateBulkTimeFramesPending ? 'Saving...' : 'Save'}
+                                                                                    </Button>
+                                                                                </div>
+                                                                            </div>
                                                                         </div>
 
                                                                         {/* Help Text */}
@@ -610,7 +642,7 @@ function MachineTimeFrames() {
                                                                     </div>
 
                                                                     {/* Save / Cancel Buttons */}
-                                                                    <div className="flex justify-end gap-3 mt-6">
+                                                                    {/* <div className="flex justify-end gap-3 mt-6">
                                                                         <Button
                                                                             variant="secondary"
                                                                             className="bg-gray-200 hover:bg-gray-300"
@@ -637,7 +669,7 @@ function MachineTimeFrames() {
                                                                         >
                                                                             {isUpdateBulkTimeFramesPending ? 'Saving...' : 'Save Changes'}
                                                                         </Button>
-                                                                    </div>
+                                                                    </div> */}
                                                                 </>
                                                             )}
                                                         </>

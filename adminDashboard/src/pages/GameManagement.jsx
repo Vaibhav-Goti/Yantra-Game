@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Layout from '../components/layout/Layout';
 import Card, { CardHeader, CardBody } from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -20,7 +20,31 @@ import MachineTransactionHistory from '../components/game/MachineTransactionHist
 import MachineBalanceManagement from '../components/game/MachineBalanceManagement';
 
 const GameManagement = () => {
-  const [activeTab, setActiveTab] = useState('balance');
+  const [activeTab, setActiveTab] = useState(localStorage.getItem('activeTab') || 'balance');
+
+  // useEffect(() => {
+  //   const handleHashChange = () => {
+  //     const hashTab = window.location.hash.replace('#', '');
+  //     if (hashTab) setActiveTab(hashTab);
+  //   };
+  
+  //   // Run once in case page already has a hash
+  //   handleHashChange();
+  
+  //   // Listen for browser back/forward buttons
+  //   window.addEventListener('hashchange', handleHashChange);
+  
+  //   // Cleanup
+  //   return () => {
+  //     window.removeEventListener('hashchange', handleHashChange);
+  //   };
+  // }, []);  
+
+  const handleTabClick = (tabId) => {
+    setActiveTab(tabId);
+    // window.location.hash = tabId; // Update hash in URL
+    localStorage.setItem('activeTab', tabId);
+  };
 
   const tabs = [
     {
@@ -95,7 +119,7 @@ const GameManagement = () => {
                   return (
                     <button
                       key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
+                      onClick={() => handleTabClick(tab.id)}
                       className={`flex items-center py-3 sm:py-4 px-1 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap ${
                         isActive
                           ? 'border-blue-500 text-blue-600'

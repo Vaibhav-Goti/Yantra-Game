@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import Card, { CardHeader, CardBody } from "../components/ui/Card";
 import Table from "../components/ui/Table";
 import Pagination from "../components/Paginate";
@@ -13,16 +13,16 @@ import { useGetMachines } from "../hooks/useMachine";
 import { useGameSessions } from "../hooks/useGameSessions";
 import { formatDateTime } from "../utils/timeUtils";
 
-function GameSessions() {
+function MachineGameSessions() {
   const navigate = useNavigate();
   const [machineFilter, setMachineFilter] = useState("All");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
+  const { machineId } = useParams();
 
   // console.log(page, limit)
   const { data: machinesData, isPending: isMachinesPending, isError: isMachinesError, error: machinesError } = useGetMachines()
-  const { data: gameSessionsData, isPending: isGameSessionsPending, isError: isGameSessionsError, error: gameSessionsError } = useGameSessions({ page, limit, status: 'Completed', ...(machineFilter !== "All" && { machineId: machineFilter }) })
-  const { data: liveGameSessionsData, isPending: isLiveGameSessionsPending, isError: isLiveGameSessionsError, error: liveGameSessionsError } = useGameSessions({ status: 'Active', ...(machineFilter !== "All" && { machineId: machineFilter }) })
+  const { data: gameSessionsData, isPending: isGameSessionsPending, isError: isGameSessionsError, error: gameSessionsError } = useGameSessions({ page, limit, status: 'Completed', machineId: machineId })
 
   // Set default machine when machines data loads
   useEffect(() => {
@@ -149,10 +149,10 @@ function GameSessions() {
   return (
     <Card>
       <CardHeader className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">Game Sessions</h3>
+        <h3 className="text-lg font-semibold">Machine Game Sessions</h3>
 
         {/* Filter Dropdown */}
-        <Dropdown
+        {/* <Dropdown
           trigger={
             <button
               className="px-3 py-2 bg-gray-100 rounded-md hover:bg-gray-200 text-sm font-medium flex items-center gap-2"
@@ -169,8 +169,6 @@ function GameSessions() {
         >
           <DropdownHeader>Filter by Machine</DropdownHeader>
           <DropdownItem onClick={() => setMachineFilter("All")}>All</DropdownItem>
-
-          {/* Show machines if loaded successfully */}
           {!isMachinesError && machinesData?.data?.length > 0 ? (
             machinesData.data.map((m) => (
               <DropdownItem key={m._id} onClick={() => setMachineFilter(m._id)}>
@@ -191,16 +189,11 @@ function GameSessions() {
               No machines available
             </DropdownItem>
           )}
-
-          {/* <DropdownDivider />
-            <DropdownItem onClick={() => setMachineFilter("Today")}>
-              Today
-            </DropdownItem> */}
-        </Dropdown>
+        </Dropdown> */}
       </CardHeader>
 
       <CardBody>
-        <LoadingOverlay isLoading={isMachinesPending}>
+        {/* <LoadingOverlay isLoading={isMachinesPending}>
           {isMachinesError ? (
             <div className="text-center py-8">
               <div className="text-red-500 text-lg mb-2">Failed to load machines</div>
@@ -213,9 +206,9 @@ function GameSessions() {
             </div>
           ) : (
             <>
-              <div className="space-y-3 sm:space-y-4">
+              <div className="space-y-3 sm:space-y-4 ">
                 {machinesData?.data?.map((machine) => (
-                  <Card padding="p-1 sm:p-2" key={machine._id} className="border border-gray-200" onClick={() => navigate(`/machine-game-sessions/${machine._id}`)}>
+                  <Card padding="p-1 sm:p-2" key={machine._id} className="border border-gray-200">
                     <CardHeader
                       padding="p-0 sm:p-2"
                       className="cursor-pointer hover:bg-gray-50 transition-colors"
@@ -228,9 +221,6 @@ function GameSessions() {
                             <p className="text-xs sm:text-sm text-gray-500 truncate">ID: {machine._id}</p>
                           </div>
                         </div>
-                        {/* <div className="text-sm text-gray-500">
-                                                    {timeFramesByMachineData?.data?.length} time frame(s)
-                                                </div> */}
                       </div>
                     </CardHeader>
                   </Card>
@@ -238,7 +228,7 @@ function GameSessions() {
               </div>
             </>
           )}
-        </LoadingOverlay>
+        </LoadingOverlay> */}
         {/* Live Session Section - Only show when a specific machine is selected */}
         {/* {machineFilter !== "All" && (
           <div className="mb-6">
@@ -337,7 +327,7 @@ function GameSessions() {
         )} */}
 
         {/* Historical Sessions Table */}
-        {/* <div>
+        <div>
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-lg font-semibold text-gray-800">Historical Sessions</h4>
             {isGameSessionsPending && (
@@ -381,10 +371,10 @@ function GameSessions() {
               </div>
             )}
           </LoadingOverlay>
-        </div> */}
+        </div>
       </CardBody>
     </Card>
   );
 }
 
-export default GameSessions;
+export default MachineGameSessions;
