@@ -316,7 +316,7 @@ export const getDepositStatus = catchAsyncError(async (req, res, next) => {
 
 // Get machine transaction history
 export const getMachineTransactionHistory = catchAsyncError(async (req, res, next) => {
-    const { page = 1, limit = 10, startDate, endDate, transactionType, machineId } = req.query;
+    const { page, limit, startDate, endDate, transactionType, machineId } = req.query;
 
     const query = {};
     if (machineId) {

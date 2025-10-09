@@ -284,7 +284,7 @@ function shuffle(array) {
 //     return { winners, unusedAmount: remainingAmount, totalAdded: totalAdded, winnerWithZeroPress };
 // };
 
-export const determineWinners = (buttonResults, finalAmount, totalBetAmount, maxWinners = 1, isJackpotWinner = false) => {
+export const determineWinners = (buttonResults, finalAmount, totalBetAmount, maxWinners = 5, isJackpotWinner = false) => {
     if (!Array.isArray(buttonResults) || buttonResults.length === 0) {
         return { winners: [], unusedAmount: finalAmount, totalAdded: 0 };
     }

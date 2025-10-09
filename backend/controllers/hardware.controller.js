@@ -73,10 +73,7 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
 
     // Generate current time in IST (Indian Standard Time), 24-hour HH:mm
     const stopTime = moment().tz("Asia/Kolkata").format("HH:mm");
-    console.log('stopTime', stopTime);
-
-    const utcTime = moment().utc().format("HH:mm");
-    console.log('utcTime', utcTime);
+    // console.log('stopTime', stopTime);
     // console.log('stopTime', stopTime);
 
     // Start database transaction for atomic operations
@@ -212,6 +209,7 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
         let adjustedDeductedAmount = deductionAmount;
         let totalAdded = 0;
         let isManualWin = winners?.isManualWin || false;
+        const payoutAmount = winners?.winners.reduce((sum, winner) => sum + winner.payOutAmount, 0) || 0;
 
         // if (isManualWin) {
         //     console.log('isManualWin', isManualWin)
@@ -228,7 +226,6 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
             // console.log('finalPool', finalPool)
             // console.log('winners?.unusedAmount', winners?.unusedAmount)
             // console.log('winners?.totalAdded', winners?.totalAdded)
-            // console.log('machine.depositAmount', machine.depositAmount)
             const extraPayout = finalPool - amountCalculation.totalBetAmount + winners?.totalAdded;
             const unusedFinalAmount = winners?.unusedAmount || 0;
             // console.log('extraPayout', extraPayout)
@@ -239,32 +236,34 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
                 );
             }
             const totalDeductedAmount = extraPayout - unusedFinalAmount;
-            machine.depositAmount = Math.max(0, machine.depositAmount - totalDeductedAmount);
-            totalAdded = totalDeductedAmount;
+            // console.log('totalDeductedAmount', totalDeductedAmount)
+            machine.depositAmount = Math.max(0, machine.depositAmount - totalBetAmount + payoutAmount);
+            totalAdded = Math.max(0, finalPool - totalBetAmount - unusedFinalAmount);
         } else {
             // Track profits/losses
-            adjustedDeductedAmount -= winners?.totalAdded;
+            totalAdded = Math.max(0, winners?.totalAdded - adjustedDeductedAmount);
+            // adjustedDeductedAmount -= winners?.totalAdded;
             adjustedDeductedAmount += winners?.unusedAmount;
-            console.log('winners?.totalAdded', winners?.totalAdded)
-            console.log('winners?.unusedAmount', winners?.unusedAmount)
-            console.log('adjustedDeductedAmount', adjustedDeductedAmount)
-            console.log('winners?.totalAdded', winners?.totalAdded)
+            // console.log('winners?.totalAdded', winners?.totalAdded)
+            // console.log('winners?.unusedAmount', winners?.unusedAmount)
+            // console.log('adjustedDeductedAmount', adjustedDeductedAmount)
+            // console.log('winners?.totalAdded', winners?.totalAdded)
 
-            console.log('winners?.totalAddToWinnerToPressCount', winners?.totalAddToWinnerToPressCount)
+            // console.log('winners?.totalAddToWinnerToPressCount', winners?.totalAddToWinnerToPressCount)
             if (winners?.totalAddToWinnerToPressCount > 0) {
                 adjustedDeductedAmount = winners?.totalAdded - deductionAmount;
-                machine.depositAmount = Math.max(0, machine.depositAmount - adjustedDeductedAmount);
-                console.log('winners?.totalAdded', machine.depositAmount, winners?.totalAdded)
+                machine.depositAmount = Math.max(0, machine.depositAmount - totalBetAmount + payoutAmount);
+                // console.log('winners?.totalAdded', machine.depositAmount, winners?.totalAdded)
                 totalAdded = winners?.totalAdded;
             } else {
                 console.log('adjutedDeductedAmount', adjustedDeductedAmount)
                 // Prevent negative deduction
                 adjustedDeductedAmount = Math.abs(adjustedDeductedAmount);
-                console.log('adjustedDeductedAmount', adjustedDeductedAmount)
-                machine.depositAmount = Math.max(0, machine.depositAmount - adjustedDeductedAmount);
-                totalAdded = winners?.totalAdded;
-                console.log('totalAdded', totalAdded)
-                console.log('machine.depositAmount', machine.depositAmount)
+                // console.log('adjustedDeductedAmount', adjustedDeductedAmount)
+                machine.depositAmount = Math.max(0, machine.depositAmount - totalBetAmount + payoutAmount);
+                totalAdded = Math.max(0, winners?.totalAdded - adjustedDeductedAmount);
+                // console.log('totalAdded', totalAdded)
+                // console.log('machine.depositAmount', machine.depositAmount)
             }
         }
         // }
@@ -294,8 +293,8 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
                 remainingPercentage: relevantTimeFrame.percentage - deductionPercentage
             }],
             totalBetAmount: amountCalculation.totalBetAmount,
-            totalDeductedAmount: amountCalculation.totalDeductedAmount,
-            finalAmount: amountCalculation.finalAmount,
+            totalDeductedAmount: Math.abs(amountCalculation.totalDeductedAmount),
+            finalAmount: Math.abs(amountCalculation.finalAmount),
             winners: winners?.winners.filter(w => w.isWinner).map(winner => ({
                 buttonNumber: winner.buttonNumber,
                 amount: winner.amount,
@@ -318,12 +317,14 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
             machineId: machine._id,
             sessionId: sessionId,
             totalBetAmount: amountCalculation.totalBetAmount,
-            finalAmount: amountCalculation.finalAmount,
+            finalAmount: Math.abs(amountCalculation.finalAmount),
             deductedAmount: amountCalculation.totalDeductedAmount,
             unusedAmount: winners?.unusedAmount || 0,
             totalAdded: totalAdded || 0,
             payoutAmount: winners?.winners.reduce((sum, winner) => sum + winner.payOutAmount, 0) || 0,
             percentageDeducted: adjustedDeductedAmount,
+            applyPercentageDeducted: deductionPercentage,
+            applyPercentageValue: amountCalculation.totalDeductedAmount,
             remainingBalance: machine.depositAmount,
             winnerTypes: winners?.winners.filter(w => w.isWinner).map(w => w.winnerType || 'regular') || [],
             note: `Game session ${sessionId} - ${deductionFromPlayers ? 'Deduction from players' : 'Payout from machine deposit'}`
@@ -359,8 +360,8 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
                 //     percentage: relevantTimeFrame.percentage
                 // },
                 // totalBetAmount: amountCalculation.totalBetAmount,
-                // totalDeductedAmount: amountCalculation.totalDeductedAmount,
-                // finalAmount: amountCalculation.finalAmount,
+                // totalDeductedAmount: Math.abs(amountCalculation.totalDeductedAmount),
+                // finalAmount: Math.abs(amountCalculation.finalAmount),
                 // deductionPercentage: deductionPercentage,
                 // buttonResults: amountCalculation.buttonResults.map(button => ({
                 //     buttonNumber: button.buttonNumber,
@@ -395,7 +396,7 @@ export const getGameSession = catchAsyncError(async (req, res, next) => {
     const { sessionId } = req.params;
 
     const gameSession = await GameSession.findOne({ sessionId })
-        .populate('machineId', 'machineName machineNumber status location');
+        .populate('machineId', 'machineName depositAmount machineNumber status location');
 
     if (!gameSession) {
         return next(new ErrorHandler('Game session not found', 404));
@@ -450,7 +451,7 @@ export const getGameSessionsByMachine = catchAsyncError(async (req, res, next) =
     }
 
     const gameSessions = await GameSession.find({ machineId })
-        .populate('machineId', 'machineName machineNumber status location')
+        .populate('machineId', 'machineName machineNumber depositAmount status location')
         .sort({ createdAt: -1 });
 
     res.status(200).json({

@@ -66,7 +66,7 @@ function Dashboard() {
       </div>
 
        {/* Charts Section */}
-       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 mt-6">
+       {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 mt-6">
         <Card>
           <CardHeader>
             <h3 className="text-sm font-medium text-gray-700">Sessions per Day</h3>
@@ -109,10 +109,10 @@ function Dashboard() {
             </ResponsiveContainer>
           </CardBody>
         </Card>
-      </div>
+      </div> */}
 
       {/* Deposit Amount per Machine Chart */}
-      <div className="grid grid-cols-1 gap-6 mb-6">
+      {/* <div className="grid grid-cols-1 gap-6 mb-6">
         <Card>
           <CardHeader>
             <h3 className="text-sm font-medium text-gray-700">Deposit Amount per Machine</h3>
@@ -149,20 +149,14 @@ function Dashboard() {
                   name="Deposit Amount"
                   radius={[4, 4, 0, 0]}
                 />
-                {/* <Bar 
-                  dataKey="betAmount" 
-                  fill="#10b981" 
-                  name="Bet Amount"
-                  radius={[4, 4, 0, 0]}
-                /> */}
               </BarChart>
             </ResponsiveContainer>
           </CardBody>
         </Card>
-      </div>
+      </div> */}
 
       {/* Game Sessions Table */}
-      <div className="grid grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 gap-6 mt-6">
         <Card>
           <CardHeader className="flex justify-between items-center">
             <h3 className="text-sm font-medium text-gray-700">Recent Game Sessions</h3>

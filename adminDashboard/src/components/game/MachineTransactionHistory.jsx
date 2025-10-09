@@ -122,28 +122,38 @@ const MachineTransactionHistory = () => {
       { key: 'withdrawnAmountFromMachine', label: 'Withdrawn Amount' },
       { key: 'payoutAmount', label: 'Payout Amount' },
       { key: 'totalBetAmount', label: 'Total Bet Amount' },
-      { key: 'finalAmount', label: 'Final Amount' },
-      { key: 'deductedAmount', label: 'Deducted Amount' },
-      { key: 'unusedAmount', label: 'Unused Amount' },
-      { key: 'totalAdded', label: 'Total Added' },
-      { key: 'percentageDeducted', label: 'Percentage Deducted' },
+      // { key: 'finalAmount', label: 'Final Amount' },
+      { key: 'deductedAmount', label: 'Deducted Amount',
+        render: (row) => (
+          <div>
+            <div className="font-medium text-green-600">{row.applyPercentageDeducted}</div>
+            {/* <div className="text-xs text-gray-500">Deducted: ₹{row.applyPercentageValue}</div> */}
+            <div className="text-xs text-gray-500">Deducted: ₹{row.deductedAmount}</div>
+          </div>
+        ),
+       },
+      // { key: 'unusedAmount', label: 'Unused Amount' },
+      // { key: 'totalAdded', label: 'Total Added' },
+      { key: 'profit', label: 'Profit' },
       { key: 'remainingBalance', label: 'Remaining Balance' },
-      { key: 'note', label: 'Note' }
+      // { key: 'note', label: 'Note' }
     ];
 
     // console.log(transactions);
     const data = transactions.map(transaction => ({
       ...transaction,
       machineName: transaction?.machineId?.machineName,
-      addedAmountToMachine: `+₹${transaction.addedAmountToMachine || 0}`,
-      withdrawnAmountFromMachine: `-₹${transaction.withdrawnAmountFromMachine || 0}`,
-      payoutAmount: `-₹${transaction.payoutAmount || 0}`,
+      addedAmountToMachine: `₹${transaction.addedAmountToMachine || 0}`,
+      withdrawnAmountFromMachine: `₹${transaction.withdrawnAmountFromMachine || 0}`,
+      payoutAmount: `₹${transaction.payoutAmount || 0}`,
       totalBetAmount: `₹${transaction.totalBetAmount || 0}`,
       finalAmount: `₹${transaction.finalAmount || 0}`,
       deductedAmount: `₹${transaction.deductedAmount || 0}`,
+      applyPercentageDeducted: `${transaction.applyPercentageDeducted || 0}%`,
+      applyPercentageValue: `₹${transaction.applyPercentageValue || 0}`,
       unusedAmount: `₹${transaction.unusedAmount || 0}`,
       totalAdded: `₹${transaction.totalAdded || 0}`,
-      percentageDeducted: `${transaction.percentageDeducted || 0}`,
+      profit: `₹${Math.max(transaction.totalBetAmount - transaction.payoutAmount, 0) || 0}`,
       remainingBalance: `₹${transaction.remainingBalance || 0}`,
       note: transaction.note,
       createdAt: formatDateTime(transaction.createdAt)

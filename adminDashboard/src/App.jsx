@@ -8,6 +8,7 @@ import Machines from './pages/Machine'
 import MachineTimeFrames from './pages/TimeFrame'
 import AdminManagement from './pages/User'
 import GameSessions from './pages/GameSessions'
+import GameSessionDetails from './pages/GameSessionDetails'
 import GameManagement from './pages/GameManagement'
 import ProfilePage from './pages/Page'
 import ChangePassword from './pages/ChangePassword'
@@ -16,6 +17,8 @@ import ResetPassword from './pages/ResetPassword'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from './apis/apiUtils'
 import { ToastContainer } from 'react-toastify'
+import MachineTransactionHistoryPage from './pages/MachineTransactionHistoryPage'
+import MachineGameSessions from './pages/MachineGameSession'
 
 function App() {
 
@@ -46,6 +49,10 @@ function App() {
           element: <GameSessions />
         },
         {
+          path: '/sessions/:sessionId',
+          element: <GameSessionDetails />
+        },
+        {
           path: '/game-management',
           element: <GameManagement />
         },
@@ -60,6 +67,14 @@ function App() {
         {
           path: '/change-password',
           element: <ChangePassword />
+        },
+        {
+          path: '/machine-transaction-history/:machineId',
+          element: <MachineTransactionHistoryPage />
+        },
+        {
+          path: '/machine-game-sessions/:machineId',
+          element: <MachineGameSessions />
         }
       ]
     },

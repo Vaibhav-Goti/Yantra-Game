@@ -12,12 +12,12 @@ export function useGetGameSessions(params) {
 }
 
 export function useGetGameSessionById(sessionId) {
-  const { data, isPending, isError, error } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ['gameSession', sessionId],
     queryFn: ({ signal }) => getGameSessionByIdApi(sessionId, signal),
     enabled: !!sessionId,
     staleTime: 1000 * 60 * 5,
   });
 
-  return { data, isPending, isError, error };
+  return { data, isLoading, isError, error };
 }
