@@ -40,7 +40,9 @@ export const getWinnerRule = catchAsyncError(async (req, res, next) => {
     if (status) {
         filter.status = status;
     }
-    const winnerRule = await winnerRuleModal.find(filter).skip((page - 1) * limit).limit(limit);
+    const winnerRule = await winnerRuleModal.find(filter)
+    .populate('appliedInSessions').lean()
+    .skip((page - 1) * limit).limit(limit);
     const totalWinnerRule = await winnerRuleModal.countDocuments(filter);
     const totalPages = Math.ceil(totalWinnerRule / limit);
     const hasNextPage = page < totalPages;

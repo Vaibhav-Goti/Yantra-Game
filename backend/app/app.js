@@ -6,6 +6,9 @@ dotenv.config();
 import '../config/dbConnect.js';
 import { responseFormatter } from '../middlewares/responseFormatter.js';
 
+// machine status job
+import machineStatusJobs from '../jobs/machineStatusJobs.js';
+machineStatusJobs();
 
 const app = express()
 

@@ -20,7 +20,8 @@ import {
     getMachineBalanceSummaryEndpoint,
     validateMachineTransactionIntegrity,
     reconcileMachineBalanceEndpoint,
-    getMachineTransactionAnalyticsEndpoint
+    getMachineTransactionAnalyticsEndpoint,
+    getMachineOfflineOnlineStatus
 } from '../controllers/machine.controller.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
 
@@ -53,5 +54,8 @@ router.route('/balance-summary-enhanced/:machineId').get(authMiddleware, getMach
 router.route('/validate-integrity/:machineId').get(authMiddleware, validateMachineTransactionIntegrity);
 router.route('/reconcile-balance/:machineId').post(authMiddleware, reconcileMachineBalanceEndpoint);
 router.route('/analytics/:machineId').get(authMiddleware, getMachineTransactionAnalyticsEndpoint);
+
+// Get machine offline/online status
+router.route('/offline-online-status').get(getMachineOfflineOnlineStatus);
 
 export default router;

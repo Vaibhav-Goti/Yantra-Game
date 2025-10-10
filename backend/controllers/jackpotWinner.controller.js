@@ -35,7 +35,9 @@ export const getJackpotWinner = catchAsyncError(async (req, res, next) => {
     if (machineId) {
         filter.machineId = machineId;
     }
-    const jackpotWinner = await jackpotWinnerModal.find(filter).skip((page - 1) * limit).limit(limit);
+    const jackpotWinner = await jackpotWinnerModal.find(filter)
+    .populate('appliedInSessions').lean()
+    .skip((page - 1) * limit).limit(limit);
     const totalJackpotWinner = await jackpotWinnerModal.countDocuments(filter);
 
     res.status(200).json({

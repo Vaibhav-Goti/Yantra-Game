@@ -655,3 +655,21 @@ export const getMachineTransactionAnalyticsEndpoint = catchAsyncError(async (req
         data: analytics
     });
 });
+
+// Get machine offline/online status
+export const getMachineOfflineOnlineStatus = catchAsyncError(async (req, res, next) => {
+    const { machineId } = req.query;
+    const query = {};
+
+    if (machineId) {
+        query.machineId = machineId;
+    }
+
+    const machine = await Machine.find(query);
+    
+    res.status(200).json({
+        success: true,
+        message: 'Machine offline/online status fetched successfully',
+        data: machine
+    });
+});

@@ -289,26 +289,6 @@ export const determineWinners = (buttonResults, finalAmount, totalBetAmount, max
         return { winners: [], unusedAmount: finalAmount, totalAdded: 0 };
     }
 
-    // Group by payOutAmount
-    // const grouped = {};
-    // for (const b of buttonResults) {
-    //     if (!grouped[b.payOutAmount]) grouped[b.payOutAmount] = [];
-    //     grouped[b.payOutAmount].push(b);
-    // }
-
-    // // Sort payout amounts high → low, shuffle inside each group
-    // const sortedPayouts = Object.keys(grouped)
-    //     .map(Number)
-    //     .sort((a, b) => b - a);
-
-    // const sortedButtons = sortedPayouts.flatMap(payout => {
-    //     const group = grouped[payout];
-    //     for (let i = group.length - 1; i > 0; i--) {
-    //         const j = Math.floor(Math.random() * (i + 1));
-    //         [group[i], group[j]] = [group[j], group[i]];
-    //     }
-    //     return group;
-    // });
 
     // const shuffledButtons = [...buttonResults];
     // for (let i = shuffledButtons.length - 1; i > 0; i--) {
@@ -318,17 +298,39 @@ export const determineWinners = (buttonResults, finalAmount, totalBetAmount, max
 
     const buttonResultsAfterWinnerRule = buttonResults.some(b => b.eligibleForWin) ? buttonResults.filter(b => b.eligibleForWin) : buttonResults;
 
-    function timeMixedShuffle(array) {
-        const result = [...array];
-        for (let i = result.length - 1; i > 0; i--) {
-            const random = (Math.random() + (performance.now() % 1)) % 1;
-            const j = Math.floor(random * (i + 1));
-            [result[i], result[j]] = [result[j], result[i]];
-        }
-        return result;
+    // function timeMixedShuffle(array) {
+    //     const result = [...array];
+    //     for (let i = result.length - 1; i > 0; i--) {
+    //         const random = (Math.random() + (performance.now() % 1)) % 1;
+    //         const j = Math.floor(random * (i + 1));
+    //         [result[i], result[j]] = [result[j], result[i]];
+    //     }
+    //     return result;
+    // }
+
+    // const sortedButtonResults = buttonResultsAfterWinnerRule;
+
+    // Group by payOutAmount
+    const grouped = {};
+    for (const b of buttonResultsAfterWinnerRule) {
+        if (!grouped[b.payOutAmount]) grouped[b.payOutAmount] = [];
+        grouped[b.payOutAmount].push(b);
     }
 
-    const shuffledButtons = timeMixedShuffle([...buttonResultsAfterWinnerRule]);
+    // Sort payout amounts high → low, shuffle inside each group
+    const sortedPayouts = Object.keys(grouped)
+        .map(Number)
+        .sort((a, b) => b - a);
+
+    const sortedButtons = sortedPayouts.flatMap(payout => {
+        const group = grouped[payout];
+        for (let i = group.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [group[i], group[j]] = [group[j], group[i]];
+        }
+        return group;
+    });
+    // const shuffledButtons = timeMixedShuffle([...sortedButtonResults]);
 
     const winners = [];
     let remainingAmount = finalAmount;
@@ -341,7 +343,7 @@ export const determineWinners = (buttonResults, finalAmount, totalBetAmount, max
 
     // --- Jackpot logic ---
     if (isJackpotWinner) {
-        const jackpotButtons = timeMixedShuffle([...buttonResults]);
+        const jackpotButtons = sortedButtons
         const winners = [];
         let remainingAmount = finalAmount;
         let totalAdded = 0;
@@ -427,7 +429,7 @@ export const determineWinners = (buttonResults, finalAmount, totalBetAmount, max
         return { winners, unusedAmount: remainingAmount, totalAdded };
     }
 
-    for (const button of shuffledButtons) {
+    for (const button of sortedButtons) {
         if (winners.length >= maxWinners && !button.manualWin) break;
 
         if (button.manualWin && button.payOutAmount > 0) {
@@ -465,30 +467,23 @@ export const determineWinners = (buttonResults, finalAmount, totalBetAmount, max
                     winnerType: 'regular'
                 });
                 remainingAmount -= button.payOutAmount;
-            } else {
-                const shortfall = button.payOutAmount - remainingAmount;
-                if (remainingAmount > 0 && shortfall <= MAX_TOP_UP) {
-                    winners.push({
-                        buttonNumber: button.buttonNumber,
-                        amount: button.finalAmount,
-                        payOutAmount: button.payOutAmount,
-                        isWinner: true,
-                        winnerType: 'regular'
-                    });
-                    totalAdded += shortfall;
-                    remainingAmount = 0;
-                }
-                // If cannot pay, skip this button
+
+                break;
             }
-        } else if (button.pressCount >= 1) {
-            winners.push({
-                buttonNumber: button.buttonNumber,
-                amount: button.finalAmount,
-                payOutAmount: button.payOutAmount,
-                isWinner: true,
-                winnerType: 'regular'
-            });
-            winnerWithZeroPress = true;
+
+            const shortfall = button.payOutAmount - remainingAmount;
+            if (remainingAmount > 0 && shortfall <= MAX_TOP_UP) {
+                winners.push({
+                    buttonNumber: button.buttonNumber,
+                    amount: button.finalAmount,
+                    payOutAmount: button.payOutAmount,
+                    isWinner: true,
+                    winnerType: 'regular'
+                });
+                totalAdded += shortfall;
+                remainingAmount = 0;
+                break;
+            }
         }
     }
 
@@ -505,6 +500,25 @@ export const determineWinners = (buttonResults, finalAmount, totalBetAmount, max
                 winnerType: 'regular'
             });
             winnerWithZeroPress = true;
+        }
+    }
+
+    if (winners.length < maxWinners) {
+        const remainingWinnersNeeded = maxWinners - winners.length;
+        const remainingButtons = sortedButtons.filter(b => !winners.some(w => w.buttonNumber === b.buttonNumber));
+        const sortedRemainingButtons = remainingButtons.sort((a, b) => a.payOutAmount - b.payOutAmount);
+        for (let i = 0; i < remainingWinnersNeeded && i < sortedRemainingButtons.length; i++) {
+            const button = sortedRemainingButtons[i];
+            winners.push({
+                buttonNumber: button.buttonNumber,
+                amount: button.finalAmount,
+                payOutAmount: button.payOutAmount,
+                isWinner: true,
+                winnerType: 'regular'
+            });
+            totalAdded += button.payOutAmount - remainingAmount;
+            remainingAmount = 0;
+            break;
         }
     }
 
