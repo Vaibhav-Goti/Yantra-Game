@@ -24,4 +24,14 @@ const winnerRuleSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
+winnerRuleSchema.virtual('appliedInSessions', {
+    ref: 'GameSession',           // The model to populate
+    localField: '_id',            // _id of WinnerRule
+    foreignField: 'appliedRule.ruleId', // field in GameSession
+    justOne: true                // many sessions can use this rule
+});
+
+winnerRuleSchema.set('toJSON', { virtuals: true });
+winnerRuleSchema.set('toObject', { virtuals: true });
+
 export default mongoose.model('WinnerRule', winnerRuleSchema);

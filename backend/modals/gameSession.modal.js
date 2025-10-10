@@ -113,6 +113,10 @@ const gameSessionSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    appliedRule: {
+        ruleType: { type: String, enum: ['JackpotWinner', 'WinnerRule'] },
+        ruleId: { type: mongoose.Schema.Types.ObjectId, refPath: 'appliedRule.ruleType' }
+    },
     status: {
         type: String,
         enum: ['Active', 'Completed', 'Cancelled'],
@@ -127,7 +131,7 @@ const gameSessionSchema = new mongoose.Schema({
 });
 
 // Index for better query performance
-gameSessionSchema.index({ sessionId: 1 });
+// gameSessionSchema.index({ sessionId: 1 });
 gameSessionSchema.index({ machineId: 1, createdAt: -1 });
 gameSessionSchema.index({ status: 1 });
 

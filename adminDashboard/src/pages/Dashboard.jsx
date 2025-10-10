@@ -15,7 +15,7 @@ import { useGetMachines } from '../hooks/useMachine';
 function Dashboard() {
   const navigate = useNavigate();
   const { stats, sessionsData, machineStatus, isLoading, isError } = useDashboardStats();
-  const { data: gameSessionsData, isPending: isGameSessionsPending, isError: isGameSessionsError } = useGameSessions({ page: 1, limit: 5 });
+  const { data: gameSessionsData, isPending: isGameSessionsPending, isError: isGameSessionsError } = useGameSessions({ page: 1, limit: 10 });
   const { data: machinesData, isPending: isMachinesPending, isError: isMachinesError } = useGetMachines();
   // Show loading state
   if (isLoading) {

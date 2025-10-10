@@ -73,6 +73,7 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
 
     // Generate current time in IST (Indian Standard Time), 24-hour HH:mm
     const stopTime = moment().tz("Asia/Kolkata").format("HH:mm");
+    const now = moment().tz('Asia/Kolkata').toDate();
     // console.log('stopTime', stopTime);
     // console.log('stopTime', stopTime);
 
@@ -91,6 +92,9 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
         if (machine.status !== 'Active') {
             throw new ErrorHandler('Machine is not active', 400);
         }
+
+        machine.lastActive = now;
+        machine.isMachineOffline = false;
 
         // Find the relevant timeframe for this stop time
         const stopMoment = moment(stopTime, 'HH:mm', true);
@@ -159,9 +163,11 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
 
         let isJackpotWinner = false;
         let maxWinners = 1;
+        let appliedRule = null;
 
         // Check if jackpot winner is active
         const jackpotWinner = await jackpotWinnerModal.findOne({ machineId, active: true, startTime: { $lte: stopTime }, endTime: { $gte: stopTime } }).session(session);
+        // console.log('jackpotWinner', jackpotWinner)
         if (jackpotWinner) {
             const currentTime = moment(stopTime, "HH:mm");
             const jackpotWinnerStartTime = moment(jackpotWinner.startTime, "HH:mm");
@@ -172,6 +178,10 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
             }
             jackpotWinner.active = false;
             await jackpotWinner.save({ session });
+            appliedRule = {
+                ruleType: 'JackpotWinner',
+                ruleId: jackpotWinner._id
+            };
         }
 
         // Check if winner rule is active
@@ -193,6 +203,10 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
                 });
                 winnerRule.active = false;
                 await winnerRule.save({ session });
+                appliedRule = {
+                    ruleType: 'WinnerRule',
+                    ruleId: winnerRule._id
+                };
             }
         }
 
@@ -202,6 +216,8 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
             ? amountCalculation.finalAmount   // when ≤100%
             : amountCalculation.totalDeductedAmount;                 // when >100%
 
+        let finalAmount = finalPool;
+        let totatDeductedAmount = deductionFromPlayers ? amountCalculation.totalDeductedAmount : 0;
         // Winners calculation
         const winners = determineWinners(amountCalculation.buttonResults, finalPool, totalBetAmount, maxWinners, isJackpotWinner);
 
@@ -241,7 +257,7 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
             totalAdded = Math.max(0, finalPool - totalBetAmount - unusedFinalAmount);
         } else {
             // Track profits/losses
-            totalAdded = Math.max(0, winners?.totalAdded - adjustedDeductedAmount);
+            totalAdded = Math.max(0, winners?.totalAdded);
             // adjustedDeductedAmount -= winners?.totalAdded;
             adjustedDeductedAmount += winners?.unusedAmount;
             // console.log('winners?.totalAdded', winners?.totalAdded)
@@ -253,7 +269,7 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
             if (winners?.totalAddToWinnerToPressCount > 0) {
                 adjustedDeductedAmount = winners?.totalAdded - deductionAmount;
                 machine.depositAmount = Math.max(0, machine.depositAmount - totalBetAmount + payoutAmount);
-                // console.log('winners?.totalAdded', machine.depositAmount, winners?.totalAdded)
+                console.log('winners?.totalAdded', machine.depositAmount, winners?.totalAdded)
                 totalAdded = winners?.totalAdded;
             } else {
                 console.log('adjutedDeductedAmount', adjustedDeductedAmount)
@@ -261,8 +277,8 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
                 adjustedDeductedAmount = Math.abs(adjustedDeductedAmount);
                 // console.log('adjustedDeductedAmount', adjustedDeductedAmount)
                 machine.depositAmount = Math.max(0, machine.depositAmount - totalBetAmount + payoutAmount);
-                totalAdded = Math.max(0, winners?.totalAdded - adjustedDeductedAmount);
-                // console.log('totalAdded', totalAdded)
+                totalAdded = Math.max(0, winners?.totalAdded);
+                console.log('totalAdded', totalAdded)
                 // console.log('machine.depositAmount', machine.depositAmount)
             }
         }
@@ -293,8 +309,8 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
                 remainingPercentage: relevantTimeFrame.percentage - deductionPercentage
             }],
             totalBetAmount: amountCalculation.totalBetAmount,
-            totalDeductedAmount: Math.abs(amountCalculation.totalDeductedAmount),
-            finalAmount: Math.abs(amountCalculation.finalAmount),
+            totalDeductedAmount: Math.abs(totatDeductedAmount),
+            finalAmount: Math.abs(finalAmount),
             winners: winners?.winners.filter(w => w.isWinner).map(winner => ({
                 buttonNumber: winner.buttonNumber,
                 amount: winner.amount,
@@ -302,6 +318,7 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
                 isWinner: winner.isWinner,
                 winnerType: winner.winnerType || 'regular'
             })),
+            appliedRule: appliedRule,
             // 👇 new tracking fields
             unusedAmount: winners?.unusedAmount,
             totalAdded: totalAdded,
@@ -317,8 +334,8 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
             machineId: machine._id,
             sessionId: sessionId,
             totalBetAmount: amountCalculation.totalBetAmount,
-            finalAmount: Math.abs(amountCalculation.finalAmount),
-            deductedAmount: amountCalculation.totalDeductedAmount,
+            finalAmount: Math.abs(finalAmount),
+            deductedAmount: Math.abs(totatDeductedAmount),
             unusedAmount: winners?.unusedAmount || 0,
             totalAdded: totalAdded || 0,
             payoutAmount: winners?.winners.reduce((sum, winner) => sum + winner.payOutAmount, 0) || 0,
@@ -346,28 +363,28 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
             // success: true,
             // message: 'Game processed and stored successfully',
             data: {
-                // sessionId: gameSession.sessionId,
-                // machine: {
-                //     _id: machine._id,
-                //     machineName: machine.machineName,
-                //     machineNumber: machine.machineNumber,
-                //     status: machine.status,
-                //     remainingDeposit: machine.depositAmount
-                // },
-                // stopTime: stopTime,
-                // relevantTimeFrame: {
-                //     time: relevantTimeFrame.time,
-                //     percentage: relevantTimeFrame.percentage
-                // },
-                // totalBetAmount: amountCalculation.totalBetAmount,
-                // totalDeductedAmount: Math.abs(amountCalculation.totalDeductedAmount),
-                // finalAmount: Math.abs(amountCalculation.finalAmount),
-                // deductionPercentage: deductionPercentage,
-                // buttonResults: amountCalculation.buttonResults.map(button => ({
-                //     buttonNumber: button.buttonNumber,
-                //     pressCount: button.pressCount,
-                //     buttonAmount: button.finalAmount // Individual button amount (no deduction)
-                // })),
+                sessionId: gameSession.sessionId,
+                machine: {
+                    _id: machine._id,
+                    machineName: machine.machineName,
+                    machineNumber: machine.machineNumber,
+                    status: machine.status,
+                    remainingDeposit: machine.depositAmount
+                },
+                stopTime: stopTime,
+                relevantTimeFrame: {
+                    time: relevantTimeFrame.time,
+                    percentage: relevantTimeFrame.percentage
+                },
+                totalBetAmount: amountCalculation.totalBetAmount,
+                totalDeductedAmount: Math.abs(totatDeductedAmount),
+                finalAmount: Math.abs(finalAmount),
+                deductionPercentage: deductionPercentage,
+                buttonResults: amountCalculation.buttonResults.map(button => ({
+                    buttonNumber: button.buttonNumber,
+                    pressCount: button.pressCount,
+                    buttonAmount: button.finalAmount // Individual button amount (no deduction)
+                })),
                 winners: winners?.winners.filter(w => w.isWinner).map(winner => ({
                     buttonNumber: winner.buttonNumber,
                     amount: winner.amount,
@@ -375,11 +392,11 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
                     isWinner: winner.isWinner,
                     // winnerType: winner.winnerType || 'regular'
                 })),
-                // unusedAmount: winners?.unusedAmount,
-                // totalAdded: totalAdded,
-                // adjustedDeductedAmount,
-                // processingTime: new Date().toISOString(),
-                // storedAt: gameSession.createdAt
+                unusedAmount: winners?.unusedAmount,
+                totalAdded: totalAdded,
+                adjustedDeductedAmount,
+                processingTime: new Date().toISOString(),
+                storedAt: gameSession.createdAt
             }
         });
 
@@ -396,7 +413,8 @@ export const getGameSession = catchAsyncError(async (req, res, next) => {
     const { sessionId } = req.params;
 
     const gameSession = await GameSession.findOne({ sessionId })
-        .populate('machineId', 'machineName depositAmount machineNumber status location');
+        .populate('machineId', 'machineName depositAmount machineNumber status location')
+        .populate('appliedRule.ruleId').lean();
 
     if (!gameSession) {
         return next(new ErrorHandler('Game session not found', 404));
@@ -423,6 +441,7 @@ export const getAllGameSessions = catchAsyncError(async (req, res, next) => {
 
     const gameSessions = await GameSession.find(filter)
         .populate('machineId', 'machineName machineNumber status location')
+        .populate('appliedRule.ruleId').lean()
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(parseInt(limit));

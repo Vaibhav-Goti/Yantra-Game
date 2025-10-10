@@ -40,13 +40,21 @@ const machineSchema = new mongoose.Schema({
             },
             message: 'Deposit amount must be 0 or greater'
         }
+    },
+    lastActive: {
+        type: Date,
+        default: null
+    },
+    isMachineOffline: {
+        type: Boolean,
+        default: false
     }
 }, {
     timestamps: true
 });
 
 // Index for better query performance
-machineSchema.index({ machineNumber: 1 });
+// machineSchema.index({ machineNumber: 1 });
 machineSchema.index({ machineName: 1 });
 
 const Machine = mongoose.model('Machine', machineSchema);

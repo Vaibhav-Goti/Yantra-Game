@@ -149,6 +149,89 @@ const JackpotManagement = () => {
     }
   };
 
+  const calculateTotalPayout = (winners) => {
+    if (!winners || !Array.isArray(winners)) return 0;
+    return winners.reduce((total, winner) => total + (winner.payOutAmount || 0), 0);
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount || 0);
+  };
+
+  const renderGameSessionDetails = (session) => {
+    if (!session) {
+      return (
+        <div className="text-sm text-gray-500 italic">
+          No game session found for this rule
+        </div>
+      );
+    }
+
+    return (
+      <div className="bg-gray-50 mt-3">
+        <div className="flex flex-wrap items-center gap-2 mb-2">
+          <FaGamepad className="text-blue-500 text-sm" />
+          <span className="text-sm font-medium text-gray-700">
+            Session: {session.sessionId}
+          </span>
+          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+            session.status === 'Completed' 
+              ? 'bg-green-100 text-green-800' 
+              : session.status === 'Active'
+              ? 'bg-yellow-100 text-yellow-800'
+              : 'bg-red-100 text-red-800'
+          }`}>
+            {session.status}
+          </span>
+        </div>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+          <div className="flex items-center gap-2">
+            <FaClock className="text-gray-500" />
+            <div>
+              <div className="text-xs text-gray-500">Stop Time</div>
+              <div className="font-medium">{session.endTime || 'N/A'}</div>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <FaMoneyBillWave className="text-green-500" />
+            <div>
+              <div className="text-xs text-gray-500">Bet Amount</div>
+              <div className="font-medium">{formatCurrency(session.totalBetAmount)}</div>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <FaTrophy className="text-yellow-500" />
+            <div>
+              <div className="text-xs text-gray-500">Total Payout</div>
+              <div className="font-medium">{formatCurrency(calculateTotalPayout(session.winners))}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* {session.winners && session.winners.length > 0 && (
+          <div className="mt-3">
+            <div className="text-xs text-gray-500 mb-2">Winners:</div>
+            <div className="flex flex-wrap gap-2">
+              {session.winners.filter(w => w.isWinner).map((winner, idx) => (
+                <span key={idx} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                  Button {winner.buttonNumber}: {formatCurrency(winner.payOutAmount)}
+                </span>
+              ))}
+            </div>
+          </div>
+        )} */}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -204,6 +287,8 @@ const JackpotManagement = () => {
                                 Created: {new Date(jackpot.createdAt).toLocaleDateString()}
                               </div>
                             </div>
+                            {/* Game Session Details */}
+                            {/* {renderGameSessionDetails(jackpot.appliedInSessions)} */}
                           </div>
                           <div className="flex flex-col sm:flex-row gap-2">
                             <Button
@@ -266,6 +351,8 @@ const JackpotManagement = () => {
                                 Created: {new Date(jackpot.createdAt).toLocaleDateString()}
                               </div>
                             </div>
+                            {/* Game Session Details */}
+                            {renderGameSessionDetails(jackpot.appliedInSessions)}
                           </div>
                           <div className="flex flex-col sm:flex-row gap-2">
                             <Button

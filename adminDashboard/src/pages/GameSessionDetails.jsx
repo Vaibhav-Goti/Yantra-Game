@@ -90,21 +90,22 @@ function GameSessionDetails() {
                     </h3>
                 </CardHeader>
                 <CardBody>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
-                            <p className="text-xs text-blue-600 font-medium">Previous Balance</p>
+                    <div className="flex flex-col gap-4">
+                        <div className="flex items-center justify-between p-2">
+                            <p className="text-lg text-blue-600 font-medium">Balance Before Game</p>
                             <p className="text-lg font-bold text-blue-700">₹{selectedSession?.data?.machineId?.depositAmount + selectedSession?.data?.totalBetAmount - selectedSession?.data?.winners?.reduce((sum, winner) => sum + winner.payOutAmount, 0) || 0}</p>
                         </div>
-                        <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
-                            <p className="text-xs text-green-600 font-medium">Game Bet Amount</p>
+                        <div className="flex items-center justify-between p-2">
+                            <p className="text-lg text-green-600 font-medium">Game Bet Amount</p>
                             <p className="text-lg font-bold text-green-700">₹{selectedSession?.data?.totalBetAmount || 0}</p>
                         </div>
-                        <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-200">
-                            <p className="text-xs text-purple-600 font-medium">Payout Amount</p>
+                        <div className="flex items-center justify-between p-2">
+                            <p className="text-lg text-purple-600 font-medium">Payout Amount</p>
                             <p className="text-lg font-bold text-purple-700">₹{selectedSession?.data?.winners?.reduce((sum, winner) => sum + winner.payOutAmount, 0) || 0}</p>
                         </div>
-                        <div className="text-center p-4 bg-orange-50 rounded-lg border border-orange-200">
-                            <p className="text-xs text-orange-600 font-medium">After Balance</p>
+                        <hr className="border-gray-200 border-1" />
+                        <div className="flex items-center justify-between p-2">
+                            <p className="text-lg text-orange-600 font-medium">Balance After Game</p>
                             <p className="text-lg font-bold text-orange-700">₹{selectedSession?.data?.machineId?.depositAmount || 0}</p>
                         </div>
                     </div>
@@ -121,7 +122,7 @@ function GameSessionDetails() {
                 </CardHeader>
                 <CardBody>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {/* Machine Info */}
+                        
                         <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                             <div className="flex items-center gap-2 mb-2">
                                 <FaUsers className="text-blue-600" />
@@ -131,7 +132,7 @@ function GameSessionDetails() {
                             <p className="text-sm text-blue-700">#{selectedSession?.data?.machineId?.machineNumber}</p>
                         </div>
 
-                        {/* Status */}
+                       
                         <div className="p-4 bg-green-50 rounded-lg border border-green-200">
                             <div className="flex items-center gap-2 mb-2">
                                 <FaClock className="text-green-600" />
@@ -141,7 +142,7 @@ function GameSessionDetails() {
                             <p className="text-sm text-green-700">Completed Session</p>
                         </div>
 
-                        {/* Final Amount */}
+                        
                         <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
                             <div className="flex items-center gap-2 mb-2">
                                 <FaMoneyBillWave className="text-purple-600" />
@@ -151,7 +152,7 @@ function GameSessionDetails() {
                             <p className="text-sm text-purple-700">Total Payout</p>
                         </div>
 
-                        {/* Winners Count */}
+                        
                         <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
                             <div className="flex items-center gap-2 mb-2">
                                 <FaTrophy className="text-orange-600" />

@@ -24,4 +24,14 @@ const jackpotWinnerSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
+jackpotWinnerSchema.virtual('appliedInSessions', {
+    ref: 'GameSession',
+    localField: '_id',
+    foreignField: 'appliedRule.ruleId',
+    justOne: true
+});
+
+jackpotWinnerSchema.set('toJSON', { virtuals: true });
+jackpotWinnerSchema.set('toObject', { virtuals: true });
+
 export default mongoose.model('JackpotWinner', jackpotWinnerSchema);
