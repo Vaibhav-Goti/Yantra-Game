@@ -7,7 +7,7 @@ import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 import { TextField } from '@mui/material';
-import { FaPlus, FaEdit, FaTrash, FaClock, FaTrophy, FaUsers } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaClock, FaTrophy, FaUsers, FaGamepad, FaMoneyBillWave } from 'react-icons/fa';
 import { useGetMachines } from '../../hooks/useMachine';
 import { useGetJackpotWinners, useCreateJackpotWinner, useUpdateJackpotWinner, useDeleteJackpotWinner } from '../../hooks/useJackpotWinner';
 import moment from 'moment';

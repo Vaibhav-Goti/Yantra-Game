@@ -86,6 +86,7 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
         if (!machine) {
             throw new ErrorHandler('Machine not found', 404);
         }
+        const balanceBeforeGame = machine.depositAmount;
         console.log('machine', machine.depositAmount)
 
         // Check if machine is active
@@ -297,6 +298,8 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
             startTime: stopTime, // Using stop time as the reference
             endTime: stopTime,
             totalDuration: 0, // Not applicable for this use case
+            balanceBeforeGame: balanceBeforeGame,
+            balanceAfterGame: machine.depositAmount,
             buttonPresses: amountCalculation.buttonResults.map(button => ({
                 buttonNumber: button.buttonNumber,
                 pressCount: button.pressCount,
@@ -363,28 +366,30 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
             // success: true,
             // message: 'Game processed and stored successfully',
             data: {
-                sessionId: gameSession.sessionId,
-                machine: {
-                    _id: machine._id,
-                    machineName: machine.machineName,
-                    machineNumber: machine.machineNumber,
-                    status: machine.status,
-                    remainingDeposit: machine.depositAmount
-                },
-                stopTime: stopTime,
-                relevantTimeFrame: {
-                    time: relevantTimeFrame.time,
-                    percentage: relevantTimeFrame.percentage
-                },
-                totalBetAmount: amountCalculation.totalBetAmount,
-                totalDeductedAmount: Math.abs(totatDeductedAmount),
-                finalAmount: Math.abs(finalAmount),
-                deductionPercentage: deductionPercentage,
-                buttonResults: amountCalculation.buttonResults.map(button => ({
-                    buttonNumber: button.buttonNumber,
-                    pressCount: button.pressCount,
-                    buttonAmount: button.finalAmount // Individual button amount (no deduction)
-                })),
+                // sessionId: gameSession.sessionId,
+                // machine: {
+                //     _id: machine._id,
+                //     machineName: machine.machineName,
+                //     machineNumber: machine.machineNumber,
+                //     status: machine.status,
+                //     remainingDeposit: machine.depositAmount
+                // },
+                // stopTime: stopTime,
+                // relevantTimeFrame: {
+                //     time: relevantTimeFrame.time,
+                //     percentage: relevantTimeFrame.percentage
+                // },
+                // balanceBeforeGame: balanceBeforeGame,
+                // balanceAfterGame: machine.depositAmount,
+                // totalBetAmount: amountCalculation.totalBetAmount,
+                // totalDeductedAmount: Math.abs(totatDeductedAmount),
+                // finalAmount: Math.abs(finalAmount),
+                // deductionPercentage: deductionPercentage,
+                // buttonResults: amountCalculation.buttonResults.map(button => ({
+                //     buttonNumber: button.buttonNumber,
+                //     pressCount: button.pressCount,
+                //     buttonAmount: button.finalAmount // Individual button amount (no deduction)
+                // })),
                 winners: winners?.winners.filter(w => w.isWinner).map(winner => ({
                     buttonNumber: winner.buttonNumber,
                     amount: winner.amount,
@@ -392,11 +397,11 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
                     isWinner: winner.isWinner,
                     // winnerType: winner.winnerType || 'regular'
                 })),
-                unusedAmount: winners?.unusedAmount,
-                totalAdded: totalAdded,
-                adjustedDeductedAmount,
-                processingTime: new Date().toISOString(),
-                storedAt: gameSession.createdAt
+                // unusedAmount: winners?.unusedAmount,
+                // totalAdded: totalAdded,
+                // adjustedDeductedAmount,
+                // processingTime: new Date().toISOString(),
+                // storedAt: gameSession.createdAt
             }
         });
 

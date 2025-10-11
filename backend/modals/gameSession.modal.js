@@ -12,6 +12,14 @@ const gameSessionSchema = new mongoose.Schema({
         ref: 'Machine',
         required: true
     },
+    balanceBeforeGame: {
+        type: Number,
+        default: 0
+    },
+    balanceAfterGame: {
+        type: Number,
+        default: 0
+    },
     startTime: {
         type: String,
         // required: true,
