@@ -120,8 +120,8 @@ const MachineTransactionHistory = () => {
       { key: 'machineName', label: 'Machine' },
       { key: 'addedAmountToMachine', label: 'Added Amount' },
       { key: 'withdrawnAmountFromMachine', label: 'Withdrawn Amount' },
-      { key: 'payoutAmount', label: 'Payout Amount' },
       { key: 'totalBetAmount', label: 'Total Bet Amount' },
+      { key: 'payoutAmount', label: 'Payout Amount' },
       // { key: 'finalAmount', label: 'Final Amount' },
       { key: 'deductedAmount', label: 'Deducted Amount',
         render: (row) => (

@@ -93,7 +93,7 @@ function GameSessionDetails() {
                     <div className="flex flex-col gap-4">
                         <div className="flex items-center justify-between p-2">
                             <p className="text-lg text-blue-600 font-medium">Balance Before Game</p>
-                            <p className="text-lg font-bold text-blue-700">₹{selectedSession?.data?.machineId?.depositAmount + selectedSession?.data?.totalBetAmount - selectedSession?.data?.winners?.reduce((sum, winner) => sum + winner.payOutAmount, 0) || 0}</p>
+                            <p className="text-lg font-bold text-blue-700">₹{selectedSession?.data?.balanceBeforeGame || 0}</p>
                         </div>
                         <div className="flex items-center justify-between p-2">
                             <p className="text-lg text-green-600 font-medium">Game Bet Amount</p>
@@ -106,7 +106,7 @@ function GameSessionDetails() {
                         <hr className="border-gray-200 border-1" />
                         <div className="flex items-center justify-between p-2">
                             <p className="text-lg text-orange-600 font-medium">Balance After Game</p>
-                            <p className="text-lg font-bold text-orange-700">₹{selectedSession?.data?.machineId?.depositAmount || 0}</p>
+                            <p className="text-lg font-bold text-orange-700">₹{selectedSession?.data?.balanceAfterGame || 0}</p>
                         </div>
                     </div>
                 </CardBody>
