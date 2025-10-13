@@ -358,7 +358,7 @@ export const determineWinners = (buttonResults, finalAmount, totalBetAmount, max
                 if (button.payOutAmount <= remainingAmount) {
                     winners.push({
                         buttonNumber: button.buttonNumber,
-                        amount: button.buttonAmount,
+                        amount: button.finalAmount,
                         payOutAmount: button.payOutAmount,
                         isWinner: true,
                         winnerType: 'jackpot'
@@ -370,7 +370,7 @@ export const determineWinners = (buttonResults, finalAmount, totalBetAmount, max
                     if (remainingAmount > 0 && shortfall <= MAX_TOP_UP) {
                         winners.push({
                             buttonNumber: button.buttonNumber,
-                            amount: button.buttonAmount,
+                            amount: button.finalAmount,
                             payOutAmount: button.payOutAmount,
                             isWinner: true,
                             winnerType: 'jackpot'
@@ -383,7 +383,7 @@ export const determineWinners = (buttonResults, finalAmount, totalBetAmount, max
             } else if (button.pressCount >= 1 && jackpotCount < maxWinners) {
                 winners.push({
                     buttonNumber: button.buttonNumber,
-                    amount: button.buttonAmount,
+                    amount: button.finalAmount,
                     payOutAmount: 0,
                     isWinner: true,
                     winnerType: 'jackpot'
@@ -408,7 +408,7 @@ export const determineWinners = (buttonResults, finalAmount, totalBetAmount, max
                 const button = sortedByMinimalLoss[i];
                 winners.push({
                     buttonNumber: button.buttonNumber,
-                    amount: button.buttonAmount,
+                    amount: button.finalAmount,
                     payOutAmount: button.payOutAmount,
                     isWinner: true,
                     winnerType: 'jackpot',
