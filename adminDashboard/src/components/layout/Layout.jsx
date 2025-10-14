@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import { useLocation } from 'react-router-dom';
@@ -11,12 +11,19 @@ const Layout = ({
   ...props
 }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const mainRef = useRef(null);
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
 
   const location = useLocation();
+  // scroll to top on route change
+  useEffect(() => {
+    if (mainRef.current) {
+      mainRef.current.scrollTo({ top: 0, behavior: "auto" }); // scroll main div
+    }
+  }, [location.pathname]);
   // console.log(location)
 
   // detect screen size on first render
@@ -79,7 +86,7 @@ const Layout = ({
         <Header title={title} onMenuToggle={toggleSidebar} />
 
         {/* Page content */}
-        <main className={`flex-1 overflow-y-auto ${className}`} {...props}>
+        <main className={`flex-1 overflow-y-auto ${className}`} {...props} ref={mainRef}>
           <div className="p-6">
             {children}
           </div>

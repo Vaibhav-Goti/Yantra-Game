@@ -1,7 +1,9 @@
 import  ErrorHandler from '../utils/errorHandler.js'
+import moment from 'moment-timezone';
+import {logger} from '../app/app.js';
 
 export default (err, req, res, next) => {
-    console.log(err);
+    // console.log(err);
     
     err.statusCode = err.statusCode || 500;
     err.message = err.message || "Internal Server Error";
@@ -34,6 +36,20 @@ export default (err, req, res, next) => {
     if (err.code === 413) {
         err = new ErrorHandler('File size limit has been reached', 413); // 413 Payload Too Large
     }
+
+    // 🔥 Log the error
+    const logInfo = {
+        timestamp: moment().tz("Asia/Kolkata").format("YYYY-MM-DD HH:mm:ss"),
+        method: req.method,
+        url: req.originalUrl,
+        status: err.statusCode,
+        error: err.message,
+        responseTime: "-", // optional
+        requestBody: req.body,
+        response: { error: err.message }
+    };
+
+    logger.error({ message: logInfo }); // logs to console + file
 
     res.status(err.statusCode).json({
         success: false,

@@ -19,6 +19,10 @@ import { queryClient } from './apis/apiUtils'
 import { ToastContainer } from 'react-toastify'
 import MachineTransactionHistoryPage from './pages/MachineTransactionHistoryPage'
 import MachineGameSessions from './pages/MachineGameSession'
+import MachineBalanceManagement from './components/game/MachineBalanceManagement'
+import ManualWinnerSelector from './components/game/ManualWinnerSelector'
+import JackpotManagement from './components/game/JackpotManagement'
+import MachineTransactionHistory from './components/game/MachineTransactionHistory'
 
 function App() {
 
@@ -52,10 +56,10 @@ function App() {
           path: '/sessions/:sessionId',
           element: <GameSessionDetails />
         },
-        {
-          path: '/game-management',
-          element: <GameManagement />
-        },
+        // {
+        //   path: '/game-management',
+        //   element: <GameManagement />
+        // },
         {
           path: '/users',
           element: <AdminManagement />
@@ -75,7 +79,23 @@ function App() {
         {
           path: '/machine-game-sessions/:machineId',
           element: <MachineGameSessions />
-        }
+        },
+        {
+          path: '/balance-management',
+          element: <MachineBalanceManagement />
+        },
+        {
+          path: '/manual-winners',
+          element: <ManualWinnerSelector />
+        },
+        {
+          path: '/jackpot-management',
+          element: <JackpotManagement />
+        },
+        {
+          path: '/transaction-history',
+          element: <MachineTransactionHistory />
+        },
       ]
     },
     {

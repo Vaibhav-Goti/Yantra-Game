@@ -2,6 +2,7 @@ const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1'
 import { QueryClient } from "@tanstack/react-query"
 import axios, { isAxiosError } from "axios"
 import { clearTokens, getAccessToken, getRefreshToken, saveAccessToken, saveRefreshToken } from "../utils/storageUtils"
+import { tostMessage } from "../components/toastMessage"
 
 export const queryClient = new QueryClient()
 const refreshToken = getRefreshToken()
@@ -35,10 +36,12 @@ const apiUtils = async (method, endpoint, headers = {}, data = null, signal = nu
                         return apiUtils(method, endpoint, headers, data, signal)
                     } catch (refreshError) {
                         clearTokens()
+                        tostMessage('Error', refreshError.message, 'error')
                         window.location.href = '/login'
                     }
                 } else {
                     clearTokens()
+                    tostMessage('Error', 'Session expired!', 'error')
                     window.location.href = '/login'
                 }
             }

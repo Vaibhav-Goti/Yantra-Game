@@ -74,7 +74,7 @@ function GameSessionDetails() {
                 </div>
                 <Button
                     variant="outline"
-                    onClick={() => navigate('/sessions')}
+                    onClick={() => navigate(-1)}
                     icon={<FaArrowLeft />}
                 >
                     Back to Sessions
