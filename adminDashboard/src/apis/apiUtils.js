@@ -37,12 +37,18 @@ const apiUtils = async (method, endpoint, headers = {}, data = null, signal = nu
                     } catch (refreshError) {
                         clearTokens()
                         tostMessage('Error', refreshError.message, 'error')
-                        window.location.href = '/login'
+                        // window.location.href = '/login'
+                        setTimeout(() => {
+                            window.location.href = '/login'
+                        }, 1000)
                     }
                 } else {
                     clearTokens()
                     tostMessage('Error', 'Session expired!', 'error')
-                    window.location.href = '/login'
+                    setTimeout(() => {
+                        window.location.href = '/login'
+                    }, 1000)
+                    // window.location.href = '/login'
                 }
             }
 

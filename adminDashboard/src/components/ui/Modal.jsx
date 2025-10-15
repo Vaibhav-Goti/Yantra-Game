@@ -31,11 +31,11 @@ const Modal = ({
   if (!isOpen) return null;
 
   const sizes = {
-    sm: 'max-w-md',
-    md: 'max-w-lg',
-    lg: 'max-w-2xl',
-    xl: 'max-w-4xl',
-    full: 'max-w-full mx-4'
+    sm: 'max-w-md mx-2',
+    md: 'max-w-lg mx-2',
+    lg: 'max-w-2xl mx-2',
+    xl: 'max-w-4xl mx-2',
+    full: 'max-w-full mx-2'
   };
 
   const handleOverlayClick = (e) => {
@@ -59,7 +59,7 @@ const Modal = ({
 
       {/* Modal panel */}
       <div
-        className={`relative z-50 bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all ${sizes[size]} w-full ${className}`}
+        className={`relative z-50 bg-white rounded-lg text-left shadow-xl transform transition-all ${sizes[size]} w-full max-h-[90vh] sm:max-h-[95vh] overflow-y-auto ${className}`}
         {...props}
       >
         {children}

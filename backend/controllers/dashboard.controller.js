@@ -6,7 +6,7 @@ import GameSession from "../modals/gameSession.modal.js";
 // Get dashboard statistics
 export const getDashboardStats = catchAsyncError(async (req, res, next) => {
     // Get total users
-    const totalUsers = await User.countDocuments();
+    const totalUsers = await User.countDocuments({role: 'Admin'});
     
     // Get total machines
     const totalMachines = await Machine.countDocuments();
@@ -63,7 +63,7 @@ export const getDashboardStats = catchAsyncError(async (req, res, next) => {
     // Calculate real growth percentages by comparing with previous period
     const userGrowth = await calculateRealGrowth(User, 'createdAt', 30); // 30 days comparison
     const machineGrowth = await calculateRealGrowth(Machine, 'createdAt', 30);
-    const sessionGrowth = await calculateRealGrowth(GameSession, 'createdAt', 7, { status: 'Completed' });
+    const sessionGrowth = await calculateRealGrowth(GameSession, 'createdAt', 30, { status: 'Completed' });
     const revenueGrowth = await calculateRevenueGrowth(gameStats[0]?.totalAdjustedDeductedAmount || 0, 7);
 
     res.status(200).json({
@@ -75,25 +75,25 @@ export const getDashboardStats = catchAsyncError(async (req, res, next) => {
                 { 
                     title: 'Users', 
                     value: totalUsers.toLocaleString(), 
-                    change: `+${userGrowth}%`, 
+                    change: `${userGrowth >= 0 ? '+' : ''}${userGrowth.toFixed(2)}%`, 
                     color: 'text-blue-600' 
                 },
                 { 
                     title: 'Machines', 
                     value: totalMachines.toString(), 
-                    change: `+${machineGrowth}%`, 
+                    change: `${machineGrowth >= 0 ? '+' : ''}${machineGrowth.toFixed(2)}%`, 
                     color: 'text-green-600' 
                 },
                 { 
                     title: 'Game Sessions', 
                     value: (gameStats[0]?.totalSessions || 0).toLocaleString(), 
-                    change: `+${sessionGrowth}%`, 
+                    change: `${sessionGrowth >= 0 ? '+' : ''}${sessionGrowth.toFixed(2)}%`, 
                     color: 'text-purple-600' 
                 },
                 { 
                     title: 'Revenue', 
                     value: `₹${(gameStats[0]?.totalAdjustedDeductedAmount || 0).toLocaleString()}`, 
-                    change: `${revenueGrowth >= 0 ? '+' : ''}${revenueGrowth}%`, 
+                    change: `${revenueGrowth >= 0 ? '+' : ''}${revenueGrowth.toFixed(2)}%`, 
                     color: revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'
                 }
             ],
