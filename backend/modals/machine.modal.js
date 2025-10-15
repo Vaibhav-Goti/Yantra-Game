@@ -48,6 +48,10 @@ const machineSchema = new mongoose.Schema({
     isMachineOffline: {
         type: Boolean,
         default: false
+    },
+    secretKey: {
+        type: String,
+        default: null
     }
 }, {
     timestamps: true

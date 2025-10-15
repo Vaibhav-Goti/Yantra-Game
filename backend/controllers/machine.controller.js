@@ -11,6 +11,8 @@ import {
     reconcileMachineBalance,
     getMachineTransactionAnalytics
 } from "../utils/machineTransactionUtils.js";
+import { generateSessionId } from "../utils/gameUtils.js";
+import { generateSecretKey } from "../utils/tokenUtils.js";
 
 // Create new machine
 export const createMachine = catchAsyncError(async (req, res, next) => {
@@ -21,6 +23,7 @@ export const createMachine = catchAsyncError(async (req, res, next) => {
     try {
         transaction.startTransaction();
         // Check if machine number already exists
+        const secretKey = generateSecretKey();
         const existingMachine = await Machine.findOne({ machineNumber }).session(transaction);
         if (existingMachine) {
             throw new ErrorHandler('Machine number already exists', 400);
@@ -29,6 +32,7 @@ export const createMachine = catchAsyncError(async (req, res, next) => {
         const machine = new Machine({
             machineName,
             machineNumber,
+            secretKey,
             status: status || 'Active',
             location: location ? location : "",
             description: description ? description : "",

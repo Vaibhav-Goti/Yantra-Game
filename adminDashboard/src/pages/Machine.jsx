@@ -8,9 +8,12 @@ import Loading, { LoadingOverlay, LoadingPage } from "../components/ui/Loading";
 import { FaEdit, FaTrash, FaExclamationTriangle, } from "react-icons/fa";
 import Modal, { ModalHeader, ModalBody, ModalFooter } from "../components/ui/Modal";
 import { useAddMachine, useDeleteMachine, useGetMachines, useUpdateMachine } from "../hooks/useMachine";
+import { FaEye, FaEyeSlash, FaCopy } from "react-icons/fa";
+import { tostMessage } from "../components/toastMessage";
 
 function Machines() {
   const [machines, setMachines] = useState([]);
+  const [visibleSecrets, setVisibleSecrets] = useState({});
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
@@ -55,6 +58,23 @@ function Machines() {
       console.log("Delete machine id:", id);
       deleteMachine({ id })
     }
+  };
+
+  const toggleSecretVisibility = (id) => {
+    setVisibleSecrets(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        tostMessage("Success", "Secret copied to clipboard!", "success");
+      })
+      .catch((err) => {
+        tostMessage("Error", "Failed to copy!", "error");
+      });
   };
 
   const handleStatusToggle = (machine) => {
@@ -176,9 +196,61 @@ function Machines() {
 
   // table columns
   const columns = [
-    { key: "id", label: "ID", render: (row) => row.id || row._id },
+    {
+      key: "id", label: "ID", render: (row) => (
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-sm">{row.id || row._id}</span>
+          <button
+            className="text-gray-500 hover:text-gray-700 focus:outline-none"
+            onClick={(e) => {
+              e.stopPropagation();
+              copyToClipboard(row.id || row._id);
+            }}
+          >
+            <FaCopy />
+          </button>
+        </div >
+      )
+    },
     { key: "machineName", label: "Machine Name" },
     { key: "machineNumber", label: "Machine Number" },
+    {
+      key: "secretKey", label: "Secret Key",
+      render: (row) => (
+        row.secretKey ? (
+          <div className="flex items-center gap-2">
+            <span className="font-mono">
+              {visibleSecrets[row.id]
+                ? row.secretKey
+                : row.secretKey?.replace(/./g, "•")} {/* masked */}
+            </span>
+
+            {/* Toggle visibility */}
+            <button
+              onClick={() => toggleSecretVisibility(row.id)}
+              className="text-gray-500 hover:text-gray-700 focus:outline-none"
+              title={visibleSecrets[row.id] ? "Hide secret" : "Show secret"}
+            >
+              {visibleSecrets[row.id] ? <FaEyeSlash /> : <FaEye />}
+            </button>
+
+            {/* Copy secret */}
+            <button
+              className="text-gray-500 hover:text-gray-700 focus:outline-none"
+              title="Copy secret"
+              onClick={(e) => {
+                e.stopPropagation();
+                copyToClipboard(row.secretKey);
+              }}
+            >
+              <FaCopy />
+            </button>
+          </div>
+        ) : (
+          <span className="text-gray-400">-</span>
+        )
+      ),
+    },
     {
       key: "status",
       label: "Status",
@@ -186,8 +258,8 @@ function Machines() {
         <div className="flex items-center gap-2">
           <span
             className={`px-2 py-1 rounded-full text-xs font-medium ${row.status === "Active"
-                ? "bg-green-100 text-green-700"
-                : "bg-red-100 text-red-700"
+              ? "bg-green-100 text-green-700"
+              : "bg-red-100 text-red-700"
               }`}
           >
             {row.status}
@@ -304,6 +376,7 @@ function Machines() {
                     machineNumber: machine?.machineNumber,
                     status: machine?.status,
                     depositAmount: machine?.depositAmount,
+                    secretKey: machine?.secretKey,
                     ...machine
                   })) : []}
                   onRowClick={(row) => console.log("Row clicked:", row)}

@@ -17,11 +17,12 @@ import {
     storeButtonPresses
 } from '../controllers/hardware.controller.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
+import macineAuth from '../middlewares/macineAuth.js';
 
 const router = express.Router();
 
 // Hardware integration routes (no authentication needed - called directly from hardware)
-router.route('/process-game').post(reqBodyValidator(buttonPressValidation), processButtonPresses); // Main endpoint
+router.route('/process-game').post(macineAuth,reqBodyValidator(buttonPressValidation), processButtonPresses); // Main endpoint
 router.route('/machine-status').post(updateMachineStatus); // Hardware status update
 router.route('/start-game').post(startGameSession);
 router.route('/store-button-presses').post(storeButtonPresses);
