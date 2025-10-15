@@ -69,8 +69,8 @@ export const storeButtonPresses = catchAsyncError(async (req, res, next) => {
 
 // Process button presses from hardware (WITH STORAGE - process and store results)
 export const processButtonPresses = catchAsyncError(async (req, res, next) => {
-    const startTime = Date.now();
-    const minimumTime = 10000; // 10 seconds
+    // const startTime = Date.now();
+    // const minimumTime = 10000; // 10 seconds
     const { machineId, buttonPresses } = req.body;
 
     // Generate current time in IST (Indian Standard Time), 24-hour HH:mm
@@ -363,14 +363,14 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
         // Commit transaction
         await session.commitTransaction();
 
-        const endTime = Date.now();
-        const duration = endTime - startTime;
-        console.log('startTime', startTime)
-        console.log('endTime', endTime)
-        console.log('duration', duration)
-        if (duration < minimumTime) {
-            await new Promise(resolve => setTimeout(resolve, minimumTime - duration));
-        }
+        // const endTime = Date.now();
+        // const duration = endTime - startTime;
+        // console.log('startTime', startTime)
+        // console.log('endTime', endTime)
+        // console.log('duration', duration)
+        // if (duration < minimumTime) {
+        //     await new Promise(resolve => setTimeout(resolve, minimumTime - duration));
+        // }
 
         // Return processed results WITH storage confirmation
         res.status(201).json({
