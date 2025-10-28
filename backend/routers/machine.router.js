@@ -21,7 +21,8 @@ import {
     validateMachineTransactionIntegrity,
     reconcileMachineBalanceEndpoint,
     getMachineTransactionAnalyticsEndpoint,
-    getMachineOfflineOnlineStatus
+    getMachineOfflineOnlineStatus,
+    getMachineDepositHistory
 } from '../controllers/machine.controller.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
 
@@ -57,5 +58,6 @@ router.route('/analytics/:machineId').get(authMiddleware, getMachineTransactionA
 
 // Get machine offline/online status
 router.route('/offline-online-status').get(getMachineOfflineOnlineStatus);
+router.route('/deposit-history').post(getMachineDepositHistory);
 
 export default router;
