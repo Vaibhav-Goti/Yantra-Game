@@ -677,7 +677,7 @@ export const getMachineOfflineOnlineStatus = catchAsyncError(async (req, res, ne
 export const getMachineDepositHistory = catchAsyncError(async (req, res, next) => {
     const { machineId } = req.body;
 
-    const result = await Machine.findOne({ machineId }).select('depositAmount');
+    const result = await Machine.findOne({ _id: machineId }).select('depositAmount');
 
     if (!result) {
         return next(new ErrorHandler('Machine not found', 400));
@@ -686,6 +686,6 @@ export const getMachineDepositHistory = catchAsyncError(async (req, res, next) =
     res.status(200).json({
         success: true,
         message: 'Machine deposit fetched successfully',
-        data: result
+        data: result.depositAmount
     });
 });
