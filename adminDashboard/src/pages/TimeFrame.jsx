@@ -392,9 +392,16 @@ function MachineTimeFrames() {
                                                     ) : (
                                                         <FaChevronRight className="text-gray-500 flex-shrink-0" />
                                                     )}
-                                                    <div className="min-w-0 flex-1">
-                                                        <h4 className="font-semibold text-base sm:text-lg truncate">{machine.machineName}</h4>
-                                                        <p className="text-xs sm:text-sm text-gray-500 truncate">ID: {machine._id}</p>
+                                                    <div className="min-w-0 flex-1 flex items-center justify-between flex-wrap">
+                                                        <div>
+                                                            <h4 className="font-semibold text-base sm:text-lg truncate">{machine.machineName}</h4>
+                                                            <p className="text-xs sm:text-sm text-gray-500 truncate">ID: {machine._id}</p>
+                                                        </div>
+                                                        <div>
+                                                            <span className={`text-sm font-medium ${machine.isMachineOffline ? 'text-red-600' : 'text-green-600'}`}>
+                                                                Status: {machine.isMachineOffline ? 'Offline' : 'Online'}
+                                                            </span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                                 {/* <div className="text-sm text-gray-500">

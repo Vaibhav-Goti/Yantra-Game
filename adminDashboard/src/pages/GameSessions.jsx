@@ -199,7 +199,7 @@ function GameSessions() {
         </Dropdown>
       </CardHeader>
 
-      <CardBody>
+      <CardBody padding="p-0 sm:p-1">
         <LoadingOverlay isLoading={isMachinesPending}>
           {isMachinesError ? (
             <div className="text-center py-8">
@@ -215,22 +215,29 @@ function GameSessions() {
             <>
               <div className="space-y-3 sm:space-y-4">
                 {machinesData?.data?.map((machine) => (
-                  <Card padding="p-1 sm:p-2" key={machine._id} className="border border-gray-200" onClick={() => navigate(`/machine-game-sessions/${machine._id}`)}>
+                  <Card padding="p-2 sm:p-2" key={machine._id} className="border border-gray-200" onClick={() => navigate(`/machine-game-sessions/${machine._id}`)}>
                     <CardHeader
-                      padding="p-0 sm:p-2"
+                      padding="p-1 sm:p-2"
                       className="cursor-pointer hover:bg-gray-50 transition-colors"
                       onClick={() => toggleMachine(machine._id)}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                          <div className="min-w-0 flex-1">
-                            <h4 className="font-semibold text-base sm:text-lg truncate">{machine.machineName}</h4>
-                            <p className="text-xs sm:text-sm text-gray-500 truncate">ID: {machine._id}</p>
+                          <div className="min-w-0 flex-1 flex items-center justify-between flex-wrap">
+                            <div>
+                              <h4 className="font-semibold text-base sm:text-lg truncate">{machine.machineName}</h4>
+                              <p className="text-xs sm:text-sm text-gray-500 truncate">ID: {machine._id}</p>
+                            </div>
+                            <div>
+                              <span className={`text-sm font-medium ${machine.isMachineOffline ? 'text-red-600' : 'text-green-600'}`}>
+                                Status: {machine.isMachineOffline ? 'Offline' : 'Online'}
+                              </span>
+                            </div>
                           </div>
                         </div>
                         {/* <div className="text-sm text-gray-500">
                                                     {timeFramesByMachineData?.data?.length} time frame(s)
-                                                </div> */}
+                        </div> */}
                       </div>
                     </CardHeader>
                   </Card>
