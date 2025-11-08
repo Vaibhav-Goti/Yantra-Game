@@ -76,11 +76,22 @@ export const startGameSession = catchAsyncError(async (req, res, next) => {
 });
 
 export const storeButtonPresses = catchAsyncError(async (req, res, next) => {
-    const { sessionId, buttonPresses } = req.body;
+    // const { sessionId, buttonPresses } = req.body;
+    const { sessionId, buttonNumber, pressCount } = req.body;
     const gameSession = await GameSession.findOne({ sessionId });
     if (!gameSession) {
         return next(new ErrorHandler('Game session not found', 404));
     }
+
+    await GameSession.findOneAndUpdate(
+        { sessionId, "buttonPresses.buttonNumber": buttonNumber },
+        {
+            $set: {
+                "buttonPresses.$.pressCount": pressCount,
+            }
+        },
+        { new: true }
+    )
 
     // Update machine active status based on timestamp
     const machineId = gameSession.machineId;
@@ -92,7 +103,7 @@ export const storeButtonPresses = catchAsyncError(async (req, res, next) => {
         await machine.save();
     }
 
-    gameSession.buttonPresses = buttonPresses;
+    // gameSession.buttonPresses = buttonPresses;
     await gameSession.save();
 
     // Populate machine details for Socket.io event
