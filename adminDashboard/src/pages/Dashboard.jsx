@@ -11,11 +11,12 @@ import { useDashboardStats } from '../hooks/useDashboard';
 import { useGameSessions } from '../hooks/useGameSessions';
 import Loading, { LoadingPage } from '../components/ui/Loading';
 import { useGetMachines } from '../hooks/useMachine';
+import { formatDateTime } from '../utils/timeUtils';
 
 function Dashboard() {
   const navigate = useNavigate();
   const { stats, sessionsData, machineStatus, isLoading, isError } = useDashboardStats();
-  const { data: gameSessionsData, isPending: isGameSessionsPending, isError: isGameSessionsError } = useGameSessions({ page: 1, limit: 10 });
+  const { data: gameSessionsData, isPending: isGameSessionsPending, isError: isGameSessionsError } = useGameSessions({ status: 'Completed', page: 1, limit: 10 });
   const { data: machinesData, isPending: isMachinesPending, isError: isMachinesError } = useGetMachines();
   // Show loading state
   if (isLoading) {
@@ -246,7 +247,7 @@ function Dashboard() {
                     label: "Created",
                     render: (row) => (
                       <div className="text-xs text-gray-500">
-                        {row.createdAt}
+                        {formatDateTime(row.createdAt)}
                       </div>
                     )
                   }

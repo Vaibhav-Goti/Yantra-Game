@@ -398,7 +398,7 @@ function MachineTimeFrames() {
                                                             <p className="text-xs sm:text-sm text-gray-500 truncate">ID: {machine._id}</p>
                                                         </div>
                                                         <div>
-                                                            <span className={`text-sm font-medium ${machine.isMachineOffline ? 'text-red-600' : 'text-green-600'}`}>
+                                                            <span className={`text-sm font-medium ${machine.isMachineOffline ? 'text-red-600 animate-pulse' : 'text-green-600 animate-pulse'}`}>
                                                                 Status: {machine.isMachineOffline ? 'Offline' : 'Online'}
                                                             </span>
                                                         </div>

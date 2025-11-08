@@ -61,6 +61,7 @@ function MachineGameSessions() {
         }
         // Invalidate and refetch live sessions (source of truth - will sync state)
         queryClient.invalidateQueries({ queryKey: ['gameSessions', { status: 'Active', machineId: machineId }] });
+        queryClient.invalidateQueries({ queryKey: ['machines'], exact: false })
       }
     };
 
@@ -74,6 +75,7 @@ function MachineGameSessions() {
         }
         // Invalidate and refetch live sessions (source of truth - will sync state)
         queryClient.invalidateQueries({ queryKey: ['gameSessions', { status: 'Active', machineId: machineId }] });
+        queryClient.invalidateQueries({ queryKey: ['machines'], exact: false });
       }
     };
 
@@ -86,6 +88,7 @@ function MachineGameSessions() {
         // Invalidate and refetch live sessions (source of truth - will sync state)
         queryClient.invalidateQueries({ queryKey: ['gameSessions', { page, limit, status: 'Completed', machineId: machineId }] });
         queryClient.invalidateQueries({ queryKey: ['gameSessions', { status: 'Active', machineId: machineId }] });
+        queryClient.invalidateQueries({ queryKey: ['machines'], exact: false });
         }
     };
 
@@ -305,7 +308,7 @@ function MachineGameSessions() {
               <CardHeader className="bg-blue-100 p-3 sm:p-4">
                 <div className="flex flex-row items-center justify-between gap-2 sm:gap-0">
                   <h4 className="text-base sm:text-lg font-semibold text-blue-800 truncate">
-                    Live Session - {machinesData?.data?.find(m => m._id === machineFilter)?.machineName}
+                    Live Session - {machinesData?.data?.find(m => m._id === machineId)?.machineName}
                   </h4>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     {isLiveGameSessionsPending ? (

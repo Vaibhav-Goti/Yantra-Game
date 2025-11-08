@@ -216,7 +216,7 @@ function Machines() {
         const isOnline = !row.isMachineOffline;
         return (
           <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+            <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-red-500 animate-pulse'}`}></div>
             <span className={`text-sm font-medium ${isOnline ? 'text-green-600' : 'text-red-600'}`}>
               {isOnline ? 'Online' : 'Offline'}
             </span>

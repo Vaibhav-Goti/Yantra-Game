@@ -7,7 +7,6 @@ export function useGetMachines(params) {
   const { data, isPending, isError, error } = useQuery({
     queryKey: ['machines', params], // cache key depends on params
     queryFn: ({ signal }) => getMachinesApi(params, signal),
-    staleTime: 1000 * 60 * 5, // 5 min cache
   });
 
   return { data, isPending, isError, error };
