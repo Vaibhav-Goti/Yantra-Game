@@ -14,6 +14,8 @@ import { useGameSessions } from "../hooks/useGameSessions";
 import { formatDateTime } from "../utils/timeUtils";
 import { useSocket } from "../contexts/SocketContext";
 import { queryClient } from "../apis/apiUtils";
+import { useCreateJackpotWinner } from "../hooks/useJackpotWinner";
+import { useCreateWinnerRule } from "../hooks/useWinnerRule";
 
 function MachineGameSessions() {
   const navigate = useNavigate();
@@ -26,10 +28,18 @@ function MachineGameSessions() {
   // Socket.io for real-time updates
   const { socket, isConnected } = useSocket();
 
+  // Winner management state
+  const [selectedMaxWinners, setSelectedMaxWinners] = useState('');
+  const [selectedButtons, setSelectedButtons] = useState([]);
+  const [appliedRuleType, setAppliedRuleType] = useState(null); // 'jackpot' or 'manual' or null
+  const [payAmount, setPayAmount] = useState(null);
+
   // console.log(page, limit)
   const { data: machinesData, isPending: isMachinesPending, isError: isMachinesError, error: machinesError } = useGetMachines()
   const { data: gameSessionsData, isPending: isGameSessionsPending, isError: isGameSessionsError, error: gameSessionsError } = useGameSessions({ page, limit, status: 'Completed', machineId: machineId })
   const { data: liveGameSessionsData, isPending: isLiveGameSessionsPending, isError: isLiveGameSessionsError, error: liveGameSessionsError } = useGameSessions({ status: 'Active', machineId: machineId })
+  const { mutate: createJackpotWinner, isPending: createJackpotWinnerLoading } = useCreateJackpotWinner();
+  const { mutate: createWinnerRule, isPending: createWinnerRuleLoading } = useCreateWinnerRule();
 
   // Initialize isLive from liveGameSessionsData (source of truth) and reset when machineId changes
   useEffect(() => {
@@ -89,7 +99,7 @@ function MachineGameSessions() {
         queryClient.invalidateQueries({ queryKey: ['gameSessions', { page, limit, status: 'Completed', machineId: machineId }] });
         queryClient.invalidateQueries({ queryKey: ['gameSessions', { status: 'Active', machineId: machineId }] });
         queryClient.invalidateQueries({ queryKey: ['machines'], exact: false });
-        }
+      }
     };
 
     socket.on('gameSessionStarted', handleGameSessionStarted);
@@ -103,6 +113,105 @@ function MachineGameSessions() {
       socket.off('gameSessionCompleted', handleGameSessionCompleted);
     };
   }, [socket, isConnected, machineId]);
+
+  // useEffect to fetch jackpot winner data when live session data changes
+  useEffect(() => {
+    if (liveGameSessionsData?.data?.[0]?.appliedRule?.ruleType === 'JackpotWinner') {
+      // console.log(liveGameSessionsData?.data?.[0]?.appliedRule);
+      setAppliedRuleType('jackpot');
+      setSelectedMaxWinners(liveGameSessionsData?.data?.[0]?.appliedRule?.ruleId?.maxWinners?.toString() || '');
+    } else if (liveGameSessionsData?.data?.[0]?.appliedRule?.ruleType === 'WinnerRule') {
+      // console.log(liveGameSessionsData?.data?.[0]?.appliedRule);
+      setAppliedRuleType('manual');
+      setSelectedButtons(liveGameSessionsData?.data?.[0]?.appliedRule?.ruleId?.allowedButtons || []);
+      const payAmountButton = liveGameSessionsData?.data?.[0]?.appliedRule?.ruleId?.allowedButtons || 0;
+      const Buttons = liveGameSessionsData?.data?.[0]?.buttonPresses?.filter(button => payAmountButton?.length > 0 && payAmountButton?.includes(button.buttonNumber));
+      const payAmount = Buttons.reduce((sum, button) => sum + button.pressCount * 100, 0);
+      const totalAmount = liveGameSessionsData?.data?.[0]?.buttonPresses?.reduce((sum, button) => sum + button.pressCount * 10, 0);
+      // console.log(totalAmount, payAmount);
+      setPayAmount(totalAmount - payAmount);
+    } else {
+      setAppliedRuleType(null);
+      setSelectedMaxWinners('');
+      setSelectedButtons([]);
+    }
+  }, [liveGameSessionsData]);
+
+  // Toggle button selection for manual winner
+  const handleButtonToggle = (buttonNumber) => {
+    if (appliedRuleType === 'jackpot') return; // Disable if jackpot is applied
+    setSelectedButtons(prev =>
+      prev.includes(buttonNumber)
+        ? prev.filter(btn => btn !== buttonNumber)
+        : [...prev, buttonNumber]
+    );
+  };
+
+  // Handle jackpot winner selection
+  const handleJackpotSelection = (num) => {
+    if (appliedRuleType === 'manual') return; // Disable if manual is applied
+    const newValue = selectedMaxWinners === num.toString() ? '' : num.toString();
+    setSelectedMaxWinners(newValue);
+    // Clear manual selection when jackpot is selected
+    if (newValue) {
+      setSelectedButtons([]);
+    }
+  };
+
+  // Handle manual winner selection (when buttons are selected)
+  const handleManualSelection = () => {
+    if (appliedRuleType === 'jackpot') return; // Disable if jackpot is applied
+    // Clear jackpot selection when manual buttons are selected
+    if (selectedButtons.length > 0) {
+      setSelectedMaxWinners('');
+    }
+  };
+
+  // Apply jackpot winner
+  const handleApplyJackpot = (data) => {
+    if (!selectedMaxWinners) return;
+
+    const payload = {
+      machineId: data.machineId,
+      sessionId: data.sessionId,
+      maxWinners: parseInt(selectedMaxWinners)
+    };
+
+    createJackpotWinner(payload, {
+      onSuccess: () => {
+        setSelectedButtons([]); // Clear manual selection
+        setAppliedRuleType('jackpot');
+        queryClient.invalidateQueries({ queryKey: ['gameSessions', { status: 'Active', machineId: machineId }] });
+      },
+    });
+  };
+
+  // Apply manual winner
+  const handleApplyManual = (data) => {
+    if (selectedButtons.length === 0) return;
+
+    const payload = {
+      machineId: data.machineId,
+      sessionId: data.sessionId,
+      allowedButtons: selectedButtons
+    };
+
+    createWinnerRule(payload, {
+      onSuccess: () => {
+        setSelectedMaxWinners(''); // Clear jackpot selection
+        setAppliedRuleType('manual');
+        queryClient.invalidateQueries({ queryKey: ['gameSessions', { status: 'Active', machineId: machineId }] });
+      }
+    });
+  };
+
+  // Clear applied rule
+  const handleClearRule = () => {
+    setAppliedRuleType(null);
+    setSelectedMaxWinners('');
+    setSelectedButtons([]);
+  };
+
 
   // Show loading page if game sessions are loading
   if (isGameSessionsPending) {
@@ -328,6 +437,158 @@ function MachineGameSessions() {
                 </div>
               </CardHeader>
               <CardBody padding="p-3 sm:p-4">
+                {/* Winner Management Section - At the top when live session exists */}
+                {liveGameSessionsData?.data?.length > 0 && (
+                  <div className="py-3 sm:py-4">
+                    {/* <div className="flex items-center justify-between mb-3"> */}
+                    {/* <h5 className="text-sm sm:text-base font-semibold text-gray-800">
+                        Apply Winner Rules for This Session
+                      </h5> */}
+                    {/* {appliedRuleType && (
+                        <button
+                          type="button"
+                          onClick={handleClearRule}
+                          className="px-3 py-1.5 text-xs bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
+                        >
+                          Clear Rule
+                        </button>
+                      )} */}
+                    {/* </div> */}
+
+                    <div className="space-y-3 sm:space-y-4">
+                      {/* Jackpot Winner Section - Dropdown and Button in same line */}
+                      <div className={`p-3 rounded-lg border-2 ${appliedRuleType === 'manual' ? 'border-gray-200 bg-gray-50 opacity-60' : appliedRuleType === 'jackpot' ? 'border-yellow-300 bg-yellow-50' : 'border-gray-200 bg-white'}`}>
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
+                          <label className="block text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap min-w-[140px] sm:min-w-[120px]">
+                            Jackpot Winner:
+                          </label>
+                          <div className="flex-1 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+                            <Dropdown
+                              trigger={
+                                <button
+                                  type="button"
+                                  disabled={appliedRuleType === 'manual' || liveGameSessionsData?.data?.[0]?.appliedRule?.ruleId?.maxWinners}
+                                  className="flex-1 sm:flex-initial px-3 py-2 text-left bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-400 min-w-[180px] sm:min-w-[200px]"
+                                >
+                                  {selectedMaxWinners ? `Max Winners: ${selectedMaxWinners}` : 'Select Max Winners'}
+                                </button>
+                              }
+                              placement="bottom-start"
+                              closeOnSelect={false}
+                              disabled={appliedRuleType === 'manual' || liveGameSessionsData?.data?.[0]?.appliedRule?.ruleId?.allowedButtons?.length > 0}
+                            >
+                              <DropdownHeader>Select Max Winners</DropdownHeader>
+                              {[2, 3, 4, 5].map((num) => (
+                                <DropdownItem
+                                  key={num}
+                                  onClick={() => handleJackpotSelection(num)}
+                                  disabled={appliedRuleType === 'manual' || liveGameSessionsData?.data?.[0]?.appliedRule?.ruleId?.maxWinners}
+                                  className={selectedMaxWinners === num.toString() ? 'bg-yellow-50 text-yellow-700' : ''}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span>{num} Winners</span>
+                                    {selectedMaxWinners === num.toString() && (
+                                      <span className="text-yellow-600">✓</span>
+                                    )}
+                                  </div>
+                                </DropdownItem>
+                              ))}
+                            </Dropdown>
+                            <button
+                              type="button"
+                              onClick={() => handleApplyJackpot({ machineId, sessionId: liveGameSessionsData?.data?.[0]?.sessionId, maxWinners: selectedMaxWinners })}
+                              disabled={!selectedMaxWinners || appliedRuleType === 'manual' || liveGameSessionsData?.data?.[0]?.appliedRule?.ruleId?.maxWinners}
+                              className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0"
+                            >
+                              {appliedRuleType === 'jackpot' ? 'Applied ✓' : 'Apply'}
+                            </button>
+                          </div>
+                        </div>
+                        {appliedRuleType === 'manual' && (
+                          <p className="text-xs text-gray-500 mt-2">Manual winner is applied. Clear it to use jackpot.</p>
+                        )}
+                      </div>
+
+                      {/* Manual Winner Section - Dropdown, Button, and Pay Amount in same line */}
+                      <div className={`p-3 rounded-lg border-2 ${appliedRuleType === 'jackpot' ? 'border-gray-200 bg-gray-50 opacity-60' : appliedRuleType === 'manual' ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white'}`}>
+                        <div className="flex flex-wrap items-start sm:items-center gap-2 sm:gap-3">
+                          <label className="block text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap min-w-[140px] sm:min-w-[120px]">
+                            Manual Winner:
+                          </label>
+                          <div className="flex-1 flex flex-wrap items-stretch sm:items-center gap-2 w-full sm:w-auto">
+                            <Dropdown
+                              trigger={
+                                <button
+                                  type="button"
+                                  disabled={appliedRuleType === 'jackpot' || liveGameSessionsData?.data?.[0]?.appliedRule?.ruleId?.allowedButtons?.length > 0}
+                                  className="flex-1 sm:flex-initial px-3 py-2 text-left bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-400 min-w-[180px] sm:min-w-[200px]"
+                                >
+                                  {selectedButtons.length > 0
+                                    ? `Selected: ${selectedButtons.length} button(s) (${selectedButtons.sort((a, b) => a - b).join(', ')})`
+                                    : 'Select Allowed Buttons'}
+                                </button>
+                              }
+                              placement="bottom-start"
+                              closeOnSelect={false}
+                              contentClassName="min-w-[300px] sm:min-w-[400px]"
+                              disabled={appliedRuleType === 'jackpot'}
+                            >
+                              <DropdownHeader>Select Allowed Buttons (Multiple)</DropdownHeader>
+                              <div className="p-3">
+                                <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 mb-3">
+                                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => (
+                                    <button
+                                      key={num}
+                                      type="button"
+                                      onClick={() => {
+                                        handleButtonToggle(num);
+                                        handleManualSelection();
+                                      }}
+                                      disabled={appliedRuleType === 'jackpot'}
+                                      className={`w-10 h-10 rounded-lg border-2 flex items-center justify-center font-semibold transition-colors text-sm ${selectedButtons.includes(num)
+                                        ? 'bg-blue-600 text-white border-blue-600'
+                                        : 'bg-white text-gray-700 border-gray-300 hover:border-blue-500'
+                                        } ${appliedRuleType === 'jackpot' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    >
+                                      {num}
+                                    </button>
+                                  ))}
+                                </div>
+                                <div className="text-xs text-gray-600 pt-2 border-t border-gray-200">
+                                  Selected: {selectedButtons.length} button(s)
+                                  {selectedButtons.length > 0 && (
+                                    <span className="ml-1 text-blue-600">
+                                      ({selectedButtons.sort((a, b) => a - b).join(', ')})
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </Dropdown>
+                            <button
+                              type="button"
+                              onClick={() => handleApplyManual({ machineId, sessionId: liveGameSessionsData?.data?.[0]?.sessionId, buttons: selectedButtons })}
+                              disabled={selectedButtons.length === 0 || appliedRuleType === 'jackpot' || liveGameSessionsData?.data?.[0]?.appliedRule?.ruleId?.allowedButtons?.length > 0}
+                              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0"
+                            >
+                              {appliedRuleType === 'manual' ? 'Applied ✓' : 'Apply'}
+                            </button>
+                            {/* Pay Amount - on same line */}
+                            {payAmount !== null && (
+                              <div className="flex items-center px-3 py-2 bg-gray-100 rounded-md border border-gray-300">
+                                <span className="text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">
+                                  Net Amount: <span className="text-blue-600 font-semibold">₹{payAmount || 0}</span>
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        {appliedRuleType === 'jackpot' && (
+                          <p className="text-xs text-gray-500 mt-2">Jackpot winner is applied. Clear it to use manual winner.</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
                 {isLiveGameSessionsPending ? (
                   <div className="flex items-center justify-center py-6 sm:py-8">
                     <div className="text-center">
@@ -437,7 +698,7 @@ function MachineGameSessions() {
           </LoadingOverlay>
         </div>
       </CardBody>
-    </Card>
+    </Card >
   );
 }
 

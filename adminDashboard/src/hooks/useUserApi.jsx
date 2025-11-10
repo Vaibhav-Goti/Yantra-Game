@@ -11,14 +11,14 @@ function useUserApi() {
   const {mutate: login, isPending: isLoginPending, isError: isLoginError, error: loginError} = useMutation({
     mutationFn: loginApi,
     onSuccess: (data) => {
-      console.log(data)
+      // console.log(data)
       tostMessage('Success', data.message, 'success')
       navigate('/dashboard')
       saveAccessToken(data.token)
       saveRefreshToken(data.refreshToken)
     },
     onError: (error) => {
-      console.log(error)
+      // console.log(error)
       tostMessage('Error', error.message, 'error')
     },
   })
@@ -41,7 +41,7 @@ export const useLogoutApi = () => {
       navigate('/login')
     },
     onError: (error) => {
-      console.log(error)
+      // console.log(error)
       tostMessage('Error', error.message, 'error')
       // Even if logout fails, clear tokens and redirect
       clearTokens()
@@ -87,7 +87,7 @@ export const useRefreshToken = () => {
       saveRefreshToken(data.refreshToken)
     },
     onError: (error) => {
-      console.log('Token refresh failed:', error)
+      // console.log('Token refresh failed:', error)
       clearTokens()
       window.location.href = '/login'
     },
@@ -104,7 +104,7 @@ export const useUpdateProfileApi = () => {
       tostMessage('Success', data.message, 'success')
     },
     onError: (error) => {
-      console.log(error)
+      // console.log(error)
       tostMessage('Error', error.message, 'error')
     }
   })
@@ -118,7 +118,7 @@ export const useForgotPasswordApi = () => {
       tostMessage('Success', data.message, 'success')
     },
     onError: (error) => {
-      console.log(error)
+      // console.log(error)
       tostMessage('Error', error.message, 'error')
     }
   })
@@ -132,7 +132,7 @@ export const useResetPasswordApi = () => {
       tostMessage('Success', data.message, 'success')
     },
     onError: (error) => {
-      console.log(error)
+      // console.log(error)
       tostMessage('Error', error.message, 'error')
     }
   })
@@ -146,7 +146,7 @@ export const useChangePasswordApi = () => {
       tostMessage('Success', data.message, 'success')
     },
     onError: (error) => {
-      console.log(error)
+      // console.log(error)
       tostMessage('Error', error.message, 'error')
     }
   })
@@ -176,7 +176,7 @@ export const useCreateUserApi = () => {
       tostMessage('Success', data.message, 'success')
     },
     onError: (error) => {
-      console.log(error)
+      // console.log(error)
       tostMessage('Error', error.message, 'error')
     }
   })
@@ -191,7 +191,7 @@ export const useUpdateUserApi = () => {
       tostMessage('Success', data.message, 'success')
     },
     onError: (error) => {
-      console.log(error)
+      // console.log(error)
       tostMessage('Error', error.message, 'error')
     }
   })
@@ -206,7 +206,7 @@ export const useDeleteUserApi = () => {
       tostMessage('Success', data.message, 'success')
     },
     onError: (error) => {
-      console.log(error)
+      // console.log(error)
       tostMessage('Error', error.message, 'error')
     }
   })

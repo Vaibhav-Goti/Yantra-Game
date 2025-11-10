@@ -20,7 +20,7 @@ export function useAddMachine() {
             tostMessage('Success', data.message, 'success')
         },
         onError: (error) => {
-            console.log(error)
+            // console.log(error)
             tostMessage('Error', error.message, 'error')
         }
     })
@@ -35,7 +35,7 @@ export function useDeleteMachine() {
             tostMessage('Success', data.message, 'success')
         },
         onError: (error) => {
-            console.log(error)
+            // console.log(error)
             tostMessage('Error', error.message, 'error')
         }
     })
@@ -50,7 +50,7 @@ export function useUpdateMachine() {
             tostMessage('Success', data.message, 'success')
         },
         onError: (error) => {
-            console.log(error)
+            // console.log(error)
             tostMessage('Error', error.message, 'error')
         }
     })

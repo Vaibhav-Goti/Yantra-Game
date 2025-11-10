@@ -21,7 +21,7 @@ export function useCreateJackpotWinner() {
             tostMessage('Success', data.message, 'success')
         },
         onError: (error) => {
-            console.log(error)
+            // console.log(error)
             tostMessage('Error', error.message, 'error')
         }
     })
@@ -36,7 +36,7 @@ export function useUpdateJackpotWinner() {
             tostMessage('Success', data.message, 'success')
         },
         onError: (error) => {
-            console.log(error)
+            // console.log(error)
             tostMessage('Error', error.message, 'error')
         }
     })
@@ -51,7 +51,7 @@ export function useDeleteJackpotWinner() {
             tostMessage('Success', data.message, 'success')
         },
         onError: (error) => {
-            console.log(error)
+            // console.log(error)
             tostMessage('Error', error.message, 'error')
         }
     })

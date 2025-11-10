@@ -21,7 +21,7 @@ export function useCreateWinnerRule() {
             tostMessage('Success', data.message, 'success')
         },
         onError: (error) => {
-            console.log(error)
+            // console.log(error)
             tostMessage('Error', error.message, 'error')
         }
     })
@@ -36,7 +36,7 @@ export function useUpdateWinnerRule() {
             tostMessage('Success', data.message, 'success')
         },
         onError: (error) => {
-            console.log(error)
+            // console.log(error)
             tostMessage('Error', error.message, 'error')
         }
     })
@@ -51,7 +51,7 @@ export function useDeleteWinnerRule() {
             tostMessage('Success', data.message, 'success')
         },
         onError: (error) => {
-            console.log(error)
+            // console.log(error)
             tostMessage('Error', error.message, 'error')
         }
     })

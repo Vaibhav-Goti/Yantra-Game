@@ -2,33 +2,77 @@ import winnerRuleModal from "../modals/winnerRule.modal.js";
 import catchAsyncError from "../middlewares/catchAsyncError.js";
 import Machine from "../modals/machine.modal.js";
 import { formatTimeToHHMM, isValidateTimeFormat } from "../utils/timeUtils.js";
+import mongoose from "mongoose";
+import GameSession from "../modals/gameSession.modal.js";
 
 export const createWinnerRule = catchAsyncError(async (req, res, next) => {
-    const { machineId, startTime, endTime, allowedButtons } = req.body;
+    const { machineId, sessionId, startTime, endTime, allowedButtons } = req.body;
 
-    const machine = await Machine.findById(machineId);
-    if (!machine) {
-        return next(new ErrorHandler('Machine not found', 404));
-    }
-    const validateStartTime = isValidateTimeFormat(startTime);
-    let formattedStartTime = startTime;
-    const validateEndTime = isValidateTimeFormat(endTime);
-    let formattedEndTime = endTime;
-    if (!validateStartTime) {
-        formattedStartTime = formatTimeToHHMM(startTime);
-    }
-    if (!validateEndTime) {
-        formattedEndTime = formatTimeToHHMM(endTime);
-    }
+    const transaction = await mongoose.startSession();
+    try {
+        transaction.startTransaction();
 
-    const winnerRule = new winnerRuleModal({ machineId, startTime: formattedStartTime, endTime: formattedEndTime, allowedButtons });
-    await winnerRule.save();
+        const machine = await Machine.findById(machineId);
+        if (!machine) {
+            throw new ErrorHandler('Machine not found', 404);
+        }
 
-    res.status(201).json({
-        success: true,
-        message: 'Winner rule created successfully',
-        data: winnerRule
-    });
+        let formattedStartTime
+        let formattedEndTime
+
+        if (startTime) {
+            const validateStartTime = isValidateTimeFormat(startTime);
+            formattedStartTime = startTime;
+
+            if (!validateStartTime) {
+                formattedStartTime = formatTimeToHHMM(startTime);
+            }
+        }
+
+        if (endTime) {
+            const validateEndTime = isValidateTimeFormat(endTime);
+            formattedEndTime = endTime;
+
+            if (!validateEndTime) {
+                formattedEndTime = formatTimeToHHMM(endTime);
+            }
+        }
+
+        const winnerRule = new winnerRuleModal({ 
+            machineId, 
+            startTime: formattedStartTime || null, 
+            endTime: formattedEndTime || null, 
+            allowedButtons 
+        })
+        await winnerRule.save({ session: transaction });
+
+        if (sessionId) {
+            const gameSession = await GameSession.findOne({ sessionId }).session(transaction);
+            if (!gameSession) {
+                throw new ErrorHandler('Game session not found', 404);
+            }
+
+            gameSession.appliedRule = {
+                ruleType: 'WinnerRule',
+                ruleId: winnerRule._id
+            };
+            await gameSession.save({ session: transaction });
+        }
+
+        await transaction.commitTransaction();
+
+        res.status(201).json({
+            success: true,
+            message: 'Winner rule created successfully',
+            data: winnerRule
+        });
+
+    } catch (error) {
+        await transaction.abortTransaction();
+        return next(error);
+    } finally {
+        await transaction.endSession();
+    }
 });
 
 export const getWinnerRule = catchAsyncError(async (req, res, next) => {
@@ -41,14 +85,14 @@ export const getWinnerRule = catchAsyncError(async (req, res, next) => {
         filter.status = status;
     }
     const winnerRule = await winnerRuleModal.find(filter)
-    .populate('appliedInSessions').lean()
-    .skip((page - 1) * limit).limit(limit);
+        .populate('appliedInSessions').lean()
+        .skip((page - 1) * limit).limit(limit);
     const totalWinnerRule = await winnerRuleModal.countDocuments(filter);
     const totalPages = Math.ceil(totalWinnerRule / limit);
     const hasNextPage = page < totalPages;
     const hasPrevPage = page > 1;
     const currentPage = parseInt(page);
-    
+
     res.status(200).json({
         success: true,
         message: 'Winner rule fetched successfully',

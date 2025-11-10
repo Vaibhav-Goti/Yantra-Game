@@ -18,7 +18,7 @@ function MachineTransactionHistoryPage() {
     useEffect(() => {
         if (machineTransactionHistory?.data) {
             const filteredHistory = machineTransactionHistory.data.filter(transaction => {
-                console.log(transaction.addedAmountToMachine, transaction.withdrawnAmountFromMachine);
+                // console.log(transaction.addedAmountToMachine, transaction.withdrawnAmountFromMachine);
                 return transaction.addedAmountToMachine > 0 || transaction.withdrawnAmountFromMachine > 0;
             });
             setMachineHistory(filteredHistory);
@@ -82,7 +82,7 @@ function MachineTransactionHistoryPage() {
                                         withdrawnAmountFromMachine: `₹${transaction.withdrawnAmountFromMachine || 0}`,
                                         createdAt: formatDateTime(transaction.createdAt)
                                     }))}
-                                    onRowClick={(row) => console.log("Row clicked:", row)}
+                                    // onRowClick={(row) => console.log("Row clicked:", row)}
                                     clickable
                                 />
                                 <Pagination

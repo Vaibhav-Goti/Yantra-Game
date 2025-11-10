@@ -219,7 +219,7 @@ export const resetPassword = catchAsyncError(async (req, res, next) => {
         // Send confirmation email
         await sendPasswordResetConfirmation(user.email)
     } catch (error) {
-        console.log('Failed to send confirmation email:', error.message)
+        // console.log('Failed to send confirmation email:', error.message)
         return next(new ErrorHandler('Failed to send confirmation email. Please try again.', 500))
         // Don't fail the request if confirmation email fails
     }

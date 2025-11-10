@@ -12,6 +12,7 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     // Create Socket.io connection
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     const socketInstance = io(SOCKET_URL, {
       transports: ['websocket', 'polling'],
       reconnection: true,
@@ -20,12 +21,12 @@ export const SocketProvider = ({ children }) => {
     });
 
     socketInstance.on('connect', () => {
-      console.log('Socket.io connected');
+      // console.log('Socket.io connected');
       setIsConnected(true);
     });
 
     socketInstance.on('disconnect', () => {
-      console.log('Socket.io disconnected');
+      // console.log('Socket.io disconnected');
       setIsConnected(false);
     });
 
@@ -38,7 +39,7 @@ export const SocketProvider = ({ children }) => {
 
     // Cleanup on unmount
     return () => {
-      socketInstance.close();
+      socketInstance.disconnect();
     };
   }, []);
 

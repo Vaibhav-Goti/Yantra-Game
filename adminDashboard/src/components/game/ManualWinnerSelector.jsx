@@ -57,7 +57,7 @@ const ManualWinnerSelector = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.machineId || !formData.startTime || !formData.endTime || formData.allowedButtons.length === 0) {
+    if (!formData.machineId || formData.allowedButtons.length === 0) {
       return;
     }
 
@@ -70,6 +70,9 @@ const ManualWinnerSelector = () => {
     };
 
     if (modalMode === 'add') {
+      if (!formData.startTime || !formData.endTime) {
+        return;
+      }
       createWinnerRule(submitData);
     } else {
       updateWinnerRule({ ...submitData, id: selectedRule._id });

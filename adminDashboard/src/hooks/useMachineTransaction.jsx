@@ -33,7 +33,7 @@ export function useAddAmountToMachine() {
             tostMessage('Success', data.message, 'success')
         },
         onError: (error) => {
-            console.log(error)
+            // console.log(error)
             tostMessage('Error', error.message, 'error')
         }
     })
@@ -50,7 +50,7 @@ export function useWithdrawAmountFromMachine() {
             tostMessage('Success', data.message, 'success')
         },
         onError: (error) => {
-            console.log(error)
+            // console.log(error)
             tostMessage('Error', error.message, 'error')
         }
     })

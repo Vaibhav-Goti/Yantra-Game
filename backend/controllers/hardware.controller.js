@@ -28,6 +28,11 @@ export const startGameSession = catchAsyncError(async (req, res, next) => {
         return next(new ErrorHandler('Machine not found', 404));
     }
 
+    const activeSessionsCount = await GameSession.countDocuments({ machineId, status: 'Active' });
+    if (activeSessionsCount > 0) {
+        return next(new ErrorHandler('Game session already started', 400));
+    }
+
     // Update machine active status based on timestamp
     const now = moment().tz('Asia/Kolkata').toDate();
     machine.lastActive = now;
@@ -76,22 +81,22 @@ export const startGameSession = catchAsyncError(async (req, res, next) => {
 });
 
 export const storeButtonPresses = catchAsyncError(async (req, res, next) => {
-    // const { sessionId, buttonPresses } = req.body;
-    const { sessionId, buttonNumber, pressCount } = req.body;
+    const { sessionId, buttonPresses } = req.body;
+    // const { sessionId, buttonNumber, pressCount } = req.body;
     const gameSession = await GameSession.findOne({ sessionId });
-    if (!gameSession) {
+    if (!gameSession || gameSession.status !== 'Active') {
         return next(new ErrorHandler('Game session not found', 404));
     }
 
-    await GameSession.findOneAndUpdate(
-        { sessionId, "buttonPresses.buttonNumber": buttonNumber },
-        {
-            $set: {
-                "buttonPresses.$.pressCount": pressCount,
-            }
-        },
-        { new: true }
-    )
+    // await GameSession.findOneAndUpdate(
+    //     { sessionId, "buttonPresses.buttonNumber": buttonNumber },
+    //     {
+    //         $set: {
+    //             "buttonPresses.$.pressCount": pressCount,
+    //         }
+    //     },
+    //     { new: true }
+    // )
 
     // Update machine active status based on timestamp
     const machineId = gameSession.machineId;
@@ -103,7 +108,7 @@ export const storeButtonPresses = catchAsyncError(async (req, res, next) => {
         await machine.save();
     }
 
-    // gameSession.buttonPresses = buttonPresses;
+    gameSession.buttonPresses = buttonPresses;
     await gameSession.save();
 
     // Populate machine details for Socket.io event
@@ -487,23 +492,23 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
     // const minimumTime = 10000; // 10 seconds
     const { sessionId } = req.body;
 
-    const gameSession = await GameSession.findOne({ sessionId });
-    if (!gameSession) {
-        return next(new ErrorHandler('Game session not found', 404));
-    }
-    const machineId = gameSession.machineId;
-    const buttonPresses = gameSession.buttonPresses;
-
-    // Generate current time in IST (Indian Standard Time), 24-hour HH:mm
-    const stopTime = moment().tz("Asia/Kolkata").format("HH:mm");
-    const now = moment().tz('Asia/Kolkata').toDate();
-    // console.log('stopTime', stopTime);
-    // console.log('stopTime', stopTime);
-
     // Start database transaction for atomic operations
     const session = await mongoose.startSession();
     try {
         session.startTransaction();
+
+        const gameSession = await GameSession.findOne({ sessionId }).session(session);
+        if (!gameSession) {
+            throw new ErrorHandler('Game session not found', 404);
+        }
+        const machineId = gameSession.machineId;
+        const buttonPresses = gameSession.buttonPresses;
+
+        // Generate current time in IST (Indian Standard Time), 24-hour HH:mm
+        const stopTime = moment().tz("Asia/Kolkata").format("HH:mm");
+        const now = moment().tz('Asia/Kolkata').toDate();
+        // console.log('stopTime', stopTime);
+        // console.log('stopTime', stopTime);
 
         const machine = await Machine.findById(machineId).session(session);
         if (!machine) {
@@ -589,48 +594,145 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
         let maxWinners = 1;
         let appliedRule = null;
 
-        // Check if jackpot winner is active
-        const jackpotWinner = await jackpotWinnerModal.findOne({ machineId, active: true, startTime: { $lte: stopTime }, endTime: { $gte: stopTime } }).session(session);
-        // console.log('jackpotWinner', jackpotWinner)
-        if (jackpotWinner) {
-            const currentTime = moment(stopTime, "HH:mm");
-            const jackpotWinnerStartTime = moment(jackpotWinner.startTime, "HH:mm");
-            const jackpotWinnerEndTime = moment(jackpotWinner.endTime, "HH:mm");
-            if (currentTime.isSameOrAfter(jackpotWinnerStartTime) && currentTime.isSameOrBefore(jackpotWinnerEndTime)) {
-                isJackpotWinner = true;
-                maxWinners = jackpotWinner.maxWinners;
-            }
-            jackpotWinner.active = false;
-            await jackpotWinner.save({ session });
-            appliedRule = {
-                ruleType: 'JackpotWinner',
-                ruleId: jackpotWinner._id
-            };
-        }
+        // PRIORITY 1: Check for session-specific rule (from gameSession.appliedRule)
+        // This takes precedence over time-based rules
+        if (gameSession.appliedRule && gameSession.appliedRule.ruleId) {
+            const ruleId = gameSession.appliedRule.ruleId;
+            const ruleType = gameSession.appliedRule.ruleType;
 
-        // Check if winner rule is active
-        const winnerRule = await WinnerRule.findOne({ machineId, active: true, startTime: { $lte: stopTime }, endTime: { $gte: stopTime } }).session(session);
-        // console.log('winnerRule', winnerRule)
-        if (winnerRule) {
-            const currentTime = moment(stopTime, "HH:mm");
-            const winnerRuleStartTime = moment(winnerRule.startTime, "HH:mm");
-            const winnerRuleEndTime = moment(winnerRule.endTime, "HH:mm");
-            if (currentTime.isSameOrAfter(winnerRuleStartTime) && currentTime.isSameOrBefore(winnerRuleEndTime)) {
-                amountCalculation.buttonResults = amountCalculation.buttonResults.map(button => {
-                    const isAllowed = winnerRule.allowedButtons.includes(button.buttonNumber);
-
-                    return {
-                        ...button,
-                        eligibleForWin: isAllowed,          // normal eligible button
-                        manualWin: isAllowed // flag for manual winner if manual:true
+            if (ruleType === 'JackpotWinner') {
+                // Fetch and apply session-specific jackpot winner rule
+                const jackpotWinner = await jackpotWinnerModal.findById(ruleId).session(session);
+                if (jackpotWinner && jackpotWinner.active) {
+                    isJackpotWinner = true;
+                    maxWinners = jackpotWinner.maxWinners;
+                    jackpotWinner.active = false;
+                    await jackpotWinner.save({ session });
+                    appliedRule = {
+                        ruleType: 'JackpotWinner',
+                        ruleId: jackpotWinner._id
                     };
-                });
-                winnerRule.active = false;
-                await winnerRule.save({ session });
-                appliedRule = {
-                    ruleType: 'WinnerRule',
-                    ruleId: winnerRule._id
-                };
+                }
+            } else if (ruleType === 'WinnerRule') {
+                // Fetch and apply session-specific winner rule
+                const winnerRule = await WinnerRule.findById(ruleId).session(session);
+                if (winnerRule && winnerRule.active) {
+                    // Convert buttonAmounts Map to object for easier access
+                    const buttonAmountsObj = {};
+                    if (winnerRule.buttonAmounts && winnerRule.buttonAmounts instanceof Map) {
+                        winnerRule.buttonAmounts.forEach((value, key) => {
+                            buttonAmountsObj[key] = value;
+                        });
+                    } else if (winnerRule.buttonAmounts && typeof winnerRule.buttonAmounts === 'object') {
+                        Object.assign(buttonAmountsObj, winnerRule.buttonAmounts);
+                    }
+
+                    amountCalculation.buttonResults = amountCalculation.buttonResults.map(button => {
+                        const isAllowed = winnerRule.allowedButtons.includes(button.buttonNumber);
+                        const buttonAmount = buttonAmountsObj[button.buttonNumber] || buttonAmountsObj[button.buttonNumber.toString()] || 0;
+                        
+                        return {
+                            ...button,
+                            eligibleForWin: isAllowed,
+                            manualWin: isAllowed,
+                            // Apply button amount (positive = add, negative = deduct)
+                            finalAmount: button.finalAmount + (buttonAmount || 0),
+                            originalAmount: button.finalAmount, // Keep original for reference
+                            buttonAmountAdjustment: buttonAmount // Track the adjustment
+                        };
+                    });
+                    
+                    // Recalculate totals after applying button amounts
+                    const totalButtonAmountAdjustment = amountCalculation.buttonResults.reduce((sum, button) => {
+                        return sum + (button.buttonAmountAdjustment || 0);
+                    }, 0);
+                    amountCalculation.finalAmount += totalButtonAmountAdjustment;
+                    
+                    winnerRule.active = false;
+                    await winnerRule.save({ session });
+                    appliedRule = {
+                        ruleType: 'WinnerRule',
+                        ruleId: winnerRule._id
+                    };
+                }
+            }
+        } else {
+            // PRIORITY 2: Fall back to time-based rules (existing logic)
+            // Check if jackpot winner is active (time-based)
+            const jackpotWinner = await jackpotWinnerModal.findOne({ 
+                machineId, 
+                active: true, 
+                startTime: { $lte: stopTime }, 
+                endTime: { $gte: stopTime } 
+            }).session(session);
+            
+            if (jackpotWinner) {
+                const currentTime = moment(stopTime, "HH:mm");
+                const jackpotWinnerStartTime = moment(jackpotWinner.startTime, "HH:mm");
+                const jackpotWinnerEndTime = moment(jackpotWinner.endTime, "HH:mm");
+                if (currentTime.isSameOrAfter(jackpotWinnerStartTime) && currentTime.isSameOrBefore(jackpotWinnerEndTime)) {
+                    isJackpotWinner = true;
+                    maxWinners = jackpotWinner.maxWinners;
+                    jackpotWinner.active = false;
+                    await jackpotWinner.save({ session });
+                    appliedRule = {
+                        ruleType: 'JackpotWinner',
+                        ruleId: jackpotWinner._id
+                    };
+                }
+            }
+
+            // Check if winner rule is active (time-based)
+            const winnerRule = await WinnerRule.findOne({ 
+                machineId, 
+                active: true, 
+                startTime: { $lte: stopTime }, 
+                endTime: { $gte: stopTime } 
+            }).session(session);
+            
+            if (winnerRule) {
+                const currentTime = moment(stopTime, "HH:mm");
+                const winnerRuleStartTime = moment(winnerRule.startTime, "HH:mm");
+                const winnerRuleEndTime = moment(winnerRule.endTime, "HH:mm");
+                if (currentTime.isSameOrAfter(winnerRuleStartTime) && currentTime.isSameOrBefore(winnerRuleEndTime)) {
+                    // Convert buttonAmounts Map to object for easier access
+                    const buttonAmountsObj = {};
+                    if (winnerRule.buttonAmounts && winnerRule.buttonAmounts instanceof Map) {
+                        winnerRule.buttonAmounts.forEach((value, key) => {
+                            buttonAmountsObj[key] = value;
+                        });
+                    } else if (winnerRule.buttonAmounts && typeof winnerRule.buttonAmounts === 'object') {
+                        Object.assign(buttonAmountsObj, winnerRule.buttonAmounts);
+                    }
+
+                    amountCalculation.buttonResults = amountCalculation.buttonResults.map(button => {
+                        const isAllowed = winnerRule.allowedButtons.includes(button.buttonNumber);
+                        const buttonAmount = buttonAmountsObj[button.buttonNumber] || buttonAmountsObj[button.buttonNumber.toString()] || 0;
+                        
+                        return {
+                            ...button,
+                            eligibleForWin: isAllowed,
+                            manualWin: isAllowed,
+                            // Apply button amount (positive = add, negative = deduct)
+                            finalAmount: button.finalAmount + (buttonAmount || 0),
+                            originalAmount: button.finalAmount, // Keep original for reference
+                            buttonAmountAdjustment: buttonAmount // Track the adjustment
+                        };
+                    });
+                    
+                    // Recalculate totals after applying button amounts
+                    const totalButtonAmountAdjustment = amountCalculation.buttonResults.reduce((sum, button) => {
+                        return sum + (button.buttonAmountAdjustment || 0);
+                    }, 0);
+                    amountCalculation.finalAmount += totalButtonAmountAdjustment;
+                    
+                    winnerRule.active = false;
+                    await winnerRule.save({ session });
+                    appliedRule = {
+                        ruleType: 'WinnerRule',
+                        ruleId: winnerRule._id
+                    };
+                }
             }
         }
 

@@ -52,7 +52,7 @@ function Machines() {
 
   const handleDelete = (id) => {
     if (window.confirm("Are you sure you want to delete this machine?")) {
-      console.log("Delete machine id:", id);
+      // console.log("Delete machine id:", id);
       deleteMachine({ id })
     }
   };
@@ -153,7 +153,7 @@ function Machines() {
       };
 
       if (modalMode === "add") {
-        console.log("Adding machine:", payload);
+        // console.log("Adding machine:", payload);
         addMachine(payload)
       } else {
         updateMachine({ id: selectedMachine.id, ...payload })

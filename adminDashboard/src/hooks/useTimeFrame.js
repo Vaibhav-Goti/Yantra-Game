@@ -26,7 +26,7 @@ export const useCreateTimeFrame = () => {
             tostMessage('Success', data.message, 'success')
         },
         onError: (error) => {
-            console.log(error)
+            // console.log(error)
             tostMessage('Error', error.message, 'error')
         }
     })
@@ -41,7 +41,7 @@ export const useUpdateTimeFrame = () => {
             tostMessage('Success', data.message, 'success')
         },
         onError: (error) => {
-            console.log(error)
+            // console.log(error)
             tostMessage('Error', error.message, 'error')
         }
     })
@@ -63,7 +63,7 @@ export const useUpdateBulkTimeFrames = () => {
             tostMessage('Success', data.message, 'success')
         },
         onError: (error) => {
-            console.log(error)
+            // console.log(error)
             tostMessage('Error', error.message, 'error')
         }
     })

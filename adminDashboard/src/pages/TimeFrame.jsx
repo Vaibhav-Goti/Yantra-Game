@@ -194,7 +194,7 @@ function MachineTimeFrames() {
                     percentage: Number(timeFrame.percentage)
                 };
             });
-            console.log("data", data);
+            // console.log("data", data);
             updateBulkTimeFrames({
                 machineId: machineId,
                 timeFrames: data

@@ -48,7 +48,7 @@ const JackpotManagement = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.machineId || !formData.startTime || !formData.endTime || !formData.maxWinners) {
+    if (!formData.machineId || !formData.maxWinners) {
       return;
     }
 
@@ -66,6 +66,9 @@ const JackpotManagement = () => {
     };
 
     if (modalMode === 'add') {
+      if (!formData.startTime || !formData.endTime) {
+        return;
+      }
       createJackpotWinner(submitData);
     } else {
       updateJackpotWinner({ ...submitData, id: selectedJackpot._id });
