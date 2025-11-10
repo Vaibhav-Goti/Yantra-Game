@@ -52,7 +52,7 @@ function Machines() {
 
   const handleDelete = (id) => {
     if (window.confirm("Are you sure you want to delete this machine?")) {
-      console.log("Delete machine id:", id);
+      // console.log("Delete machine id:", id);
       deleteMachine({ id })
     }
   };
@@ -153,7 +153,7 @@ function Machines() {
       };
 
       if (modalMode === "add") {
-        console.log("Adding machine:", payload);
+        // console.log("Adding machine:", payload);
         addMachine(payload)
       } else {
         updateMachine({ id: selectedMachine.id, ...payload })
@@ -208,6 +208,21 @@ function Machines() {
           </button>
         </div>
       ),
+    },
+    {
+      key: "onlineStatus",
+      label: "Online Status",
+      render: (row) => {
+        const isOnline = !row.isMachineOffline;
+        return (
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-red-500 animate-pulse'}`}></div>
+            <span className={`text-sm font-medium ${isOnline ? 'text-green-600' : 'text-red-600'}`}>
+              {isOnline ? 'Online' : 'Offline'}
+            </span>
+          </div>
+        );
+      },
     },
     {
       key: "depositAmount",

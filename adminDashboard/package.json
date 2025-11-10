@@ -30,6 +30,7 @@
     "react-time-picker": "^8.0.2",
     "react-toastify": "^11.0.5",
     "recharts": "^3.2.1",
+    "socket.io-client": "^4.8.1",
     "tailwindcss": "^4.1.13"
   },
   "devDependencies": {

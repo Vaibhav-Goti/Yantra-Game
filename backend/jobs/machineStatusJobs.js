@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import Machine from '../modals/machine.modal.js';
 import moment from 'moment';
+import { logger } from '../app/app.js';
 
 
 export default () => {
@@ -22,7 +23,8 @@ export default () => {
             // console.log('Machine status updated successfully');
 
         } catch (error) {
-            console.log(error.message);
+            // console.log(error.message);
+            logger.error({ message: `CRON ERROR (Machine Status Update): ${error.stack || error}`});
         }
     });
 };

@@ -47,7 +47,7 @@ const LoginPage = () => {
       email: formData.email,
       password: formData.password,
     }
-    console.log(data)
+    // console.log(data)
     login(data)
   };
 

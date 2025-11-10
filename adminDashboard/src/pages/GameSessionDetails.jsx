@@ -68,10 +68,6 @@ function GameSessionDetails() {
         <div className="space-y-6">
             {/* Header */}
             <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Game Session Details</h1>
-                    <p className="text-gray-600">Session ID: {selectedSession?.data?.sessionId}</p>
-                </div>
                 <Button
                     variant="outline"
                     onClick={() => navigate(-1)}
@@ -79,10 +75,14 @@ function GameSessionDetails() {
                 >
                     Back to Sessions
                 </Button>
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900">Game Session Details</h1>
+                    <p className="text-gray-600">Session ID: {selectedSession?.data?.sessionId}</p>
+                </div>
             </div>
 
-                        {/* Machine Balance Information */}
-                        <Card>
+            {/* Machine Balance Information */}
+            <Card>
                 <CardHeader>
                     <h3 className="text-lg font-semibold text-gray-900 flex items-center">
                         <FaMoneyBillWave className="mr-2 text-green-500" />
@@ -122,7 +122,7 @@ function GameSessionDetails() {
                 </CardHeader>
                 <CardBody>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        
+
                         <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                             <div className="flex items-center gap-2 mb-2">
                                 <FaUsers className="text-blue-600" />
@@ -132,7 +132,7 @@ function GameSessionDetails() {
                             <p className="text-sm text-blue-700">#{selectedSession?.data?.machineId?.machineNumber}</p>
                         </div>
 
-                       
+
                         <div className="p-4 bg-green-50 rounded-lg border border-green-200">
                             <div className="flex items-center gap-2 mb-2">
                                 <FaClock className="text-green-600" />
@@ -142,7 +142,7 @@ function GameSessionDetails() {
                             <p className="text-sm text-green-700">Completed Session</p>
                         </div>
 
-                        
+
                         <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
                             <div className="flex items-center gap-2 mb-2">
                                 <FaMoneyBillWave className="text-purple-600" />
@@ -152,7 +152,7 @@ function GameSessionDetails() {
                             <p className="text-sm text-purple-700">Total Payout</p>
                         </div>
 
-                        
+
                         <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
                             <div className="flex items-center gap-2 mb-2">
                                 <FaTrophy className="text-orange-600" />

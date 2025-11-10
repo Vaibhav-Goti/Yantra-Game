@@ -17,6 +17,7 @@ import ResetPassword from './pages/ResetPassword'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from './apis/apiUtils'
 import { ToastContainer } from 'react-toastify'
+import { SocketProvider } from './contexts/SocketContext'
 import MachineTransactionHistoryPage from './pages/MachineTransactionHistoryPage'
 import MachineGameSessions from './pages/MachineGameSession'
 import MachineBalanceManagement from './components/game/MachineBalanceManagement'
@@ -114,8 +115,10 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={routes} />
-      <ToastContainer icon={false} />
+      <SocketProvider>
+        <RouterProvider router={routes} />
+        <ToastContainer icon={false} />
+      </SocketProvider>
     </QueryClientProvider>
   )
 }

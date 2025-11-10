@@ -8,11 +8,11 @@ const winnerRuleSchema = new mongoose.Schema({
     },
     startTime: {
         type: String, // e.g., "10:00"
-        required: true,
+        required: false,
     },
     endTime: {
         type: String, // e.g., "10:30"
-        required: true,
+        required: false,
     },
     allowedButtons: {
         type: [Number], // e.g., [5, 6, 9]

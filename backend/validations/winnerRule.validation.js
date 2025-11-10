@@ -7,14 +7,20 @@ const winnerRuleValidation = Joi.object({
             'string.empty': 'Machine ID is required',
             'any.required': 'Machine ID is required'
         }),
+    sessionId: Joi.string()
+        .optional()
+        .messages({
+            'string.empty': 'Session ID is required',
+            'any.required': 'Session ID is required'
+        }),
     startTime: Joi.string()
-        .required()
+        .optional()
         .messages({
             'string.empty': 'Start time is required',
             'any.required': 'Start time is required'
         }),
     endTime: Joi.string()
-        .required()
+        .optional()
         .messages({
             'string.empty': 'End time is required',
             'any.required': 'End time is required'
