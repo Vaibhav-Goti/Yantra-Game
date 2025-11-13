@@ -137,6 +137,15 @@ function MachineGameSessions() {
     }
   }, [liveGameSessionsData]);
 
+  useEffect(() => {
+    const ManualPayAmount = selectedButtons;
+    const Buttons = liveGameSessionsData?.data?.[0]?.buttonPresses?.filter(button => ManualPayAmount?.length > 0 && ManualPayAmount?.includes(button.buttonNumber));
+    const payAmount = Buttons?.length > 0 ? Buttons.reduce((sum, button) => sum + button.pressCount * 100, 0) : 0;
+    const totalAmount = liveGameSessionsData?.data?.[0]?.buttonPresses?.reduce((sum, button) => sum + button.pressCount * 10, 0);
+    // console.log(totalAmount, payAmount);
+    setPayAmount(totalAmount - payAmount);
+  }, [selectedButtons]);
+
   // Toggle button selection for manual winner
   const handleButtonToggle = (buttonNumber) => {
     if (appliedRuleType === 'jackpot') return; // Disable if jackpot is applied
@@ -573,13 +582,13 @@ function MachineGameSessions() {
                               {appliedRuleType === 'manual' ? 'Applied ✓' : 'Apply'}
                             </button>
                             {/* Pay Amount - on same line */}
-                            {payAmount !== null && (
-                              <div className="flex items-center px-3 py-2 bg-gray-100 rounded-md border border-gray-300">
-                                <span className="text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">
-                                  Net Amount: <span className="text-blue-600 font-semibold">₹{payAmount || 0}</span>
-                                </span>
-                              </div>
-                            )}
+
+                            {selectedButtons.length > 0 && <div className="flex items-center px-3 py-2 bg-gray-100 rounded-md border border-gray-300">
+                              <span className="text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">
+                                Net Amount: <span className="text-blue-600 font-semibold">₹{payAmount || 0}</span>
+                              </span>
+                            </div>}
+
                           </div>
                         </div>
                         {appliedRuleType === 'jackpot' && (
