@@ -643,7 +643,7 @@ export const stopGameSession = catchAsyncError(async (req, res, next) => {
 });
 
 // version 1.0 features
-// process button presses
+// Process button presses from hardware (WITH STORAGE - process and store results)
 export const processButtonPresses = catchAsyncError(async (req, res, next) => {
     // const startTime = Date.now();
     // const minimumTime = 10000; // 10 seconds
@@ -665,7 +665,7 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
             throw new ErrorHandler('Machine not found', 404);
         }
         const balanceBeforeGame = machine.depositAmount;
-        // console.log('machine', machine.depositAmount)
+        console.log('machine', machine.depositAmount)
 
         // Check if machine is active
         if (machine.status !== 'Active') {
