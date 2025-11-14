@@ -19,7 +19,8 @@ import {
 import jackpotWinnerModal from "../modals/jackpotWinner.modal.js";
 import { io } from '../server.js';
 
-// store button presses
+// version 2.0 features
+// start game session
 export const startGameSession = catchAsyncError(async (req, res, next) => {
     const { machineId } = req.body;
 
@@ -80,6 +81,7 @@ export const startGameSession = catchAsyncError(async (req, res, next) => {
     });
 });
 
+// store button presses
 export const storeButtonPresses = catchAsyncError(async (req, res, next) => {
     const { sessionId, buttonPresses } = req.body;
     // const { sessionId, buttonNumber, pressCount } = req.body;
@@ -130,364 +132,8 @@ export const storeButtonPresses = catchAsyncError(async (req, res, next) => {
     });
 });
 
-// Process button presses from hardware (WITH STORAGE - process and store results)
-// export const processButtonPresses = catchAsyncError(async (req, res, next) => {
-//     // const startTime = Date.now();
-//     // const minimumTime = 10000; // 10 seconds
-//     const { machineId, buttonPresses } = req.body;
-
-//     // Generate current time in IST (Indian Standard Time), 24-hour HH:mm
-//     const stopTime = moment().tz("Asia/Kolkata").format("HH:mm");
-//     const now = moment().tz('Asia/Kolkata').toDate();
-//     // console.log('stopTime', stopTime);
-//     // console.log('stopTime', stopTime);
-
-//     // Start database transaction for atomic operations
-//     const session = await mongoose.startSession();
-//     try {
-//         session.startTransaction();
-
-//         const machine = await Machine.findById(machineId).session(session);
-//         if (!machine) {
-//             throw new ErrorHandler('Machine not found', 404);
-//         }
-//         const balanceBeforeGame = machine.depositAmount;
-//         console.log('machine', machine.depositAmount)
-
-//         // Check if machine is active
-//         if (machine.status !== 'Active') {
-//             throw new ErrorHandler('Machine is not active', 400);
-//         }
-
-//         machine.lastActive = now;
-//         machine.isMachineOffline = false;
-
-//         // Find the relevant timeframe for this stop time
-//         const stopMoment = moment(stopTime, 'HH:mm', true);
-//         if (!stopMoment.isValid()) {
-//             throw new ErrorHandler('Invalid stop time format', 400);
-//         }
-
-//         // // Validate game session data
-//         // const validation = validateGameSession(req.body);
-//         // if (!validation.isValid) {
-//         //     return next(new ErrorHandler(validation.errors.join(', '), 400));
-//         // }
-
-//         // Calculate total bet amount
-//         const totalBetAmount = buttonPresses.reduce((total, button) => {
-//             return total + (button.pressCount * 10); // 10 rupees per press
-//         }, 0);
-
-//         // Calculate deduction amount first to check if machine has enough for the deduction
-//         const timeFrames = await TimeFrame.find({ machineId }).sort({ time: 1 }).session(session);
-//         // console.log('timeFrames', timeFrames);
-//         if (timeFrames.length === 0) {
-//             throw new ErrorHandler('No timeframes configured for this machine', 400);
-//         }
-
-//         const relevantTimeFrame = timeFrames.reduce((latest, tf) => {
-//             const tfMoment = moment(tf.time, 'HH:mm');
-//             return tfMoment.isSameOrBefore(stopMoment) ? tf : latest;
-//         }, null) || timeFrames[timeFrames.length - 1];
-
-//         // console.log('relevantTimeFrame', relevantTimeFrame);
-
-//         // console.log('all time frame', timeFrames);
-//         // console.log('relevent time', relevantTimeFrame);
-
-
-//         // Calculate deduction amount
-//         const deductionPercentage = relevantTimeFrame ? relevantTimeFrame.percentage : 0;
-//         // const deductionAmount = (totalBetAmount * deductionPercentage) / 100;
-
-//         // Calculate deduction
-//         let deductionAmount = 0;
-//         let deductionFromPlayers = true;
-
-//         if (deductionPercentage <= 100) {
-//             deductionAmount = (totalBetAmount * deductionPercentage) / 100;
-//         } else {
-//             deductionAmount = 0; // no deduction from players
-//             deductionFromPlayers = false;
-//         }
-
-//         // Check if machine has enough for deduction/payout
-//         if (machine.depositAmount < totalBetAmount && deductionFromPlayers) {
-//             throw new ErrorHandler(
-//                 `Insufficient deposit. Machine has ${machine.depositAmount} but needs ${totalBetAmount} for deduction`,
-//                 400
-//             );
-//         }
-
-//         // --- Amount calculation ---
-//         const amountCalculation = calculateFinalAmounts(
-//             buttonPresses,
-//             deductionPercentage,
-//             10 // per press
-//         );
-
-//         let isJackpotWinner = false;
-//         let maxWinners = 1;
-//         let appliedRule = null;
-
-//         // Check if jackpot winner is active
-//         const jackpotWinner = await jackpotWinnerModal.findOne({ machineId, active: true, startTime: { $lte: stopTime }, endTime: { $gte: stopTime } }).session(session);
-//         // console.log('jackpotWinner', jackpotWinner)
-//         if (jackpotWinner) {
-//             const currentTime = moment(stopTime, "HH:mm");
-//             const jackpotWinnerStartTime = moment(jackpotWinner.startTime, "HH:mm");
-//             const jackpotWinnerEndTime = moment(jackpotWinner.endTime, "HH:mm");
-//             if (currentTime.isSameOrAfter(jackpotWinnerStartTime) && currentTime.isSameOrBefore(jackpotWinnerEndTime)) {
-//                 isJackpotWinner = true;
-//                 maxWinners = jackpotWinner.maxWinners;
-//             }
-//             jackpotWinner.active = false;
-//             await jackpotWinner.save({ session });
-//             appliedRule = {
-//                 ruleType: 'JackpotWinner',
-//                 ruleId: jackpotWinner._id
-//             };
-//         }
-
-//         // Check if winner rule is active
-//         const winnerRule = await WinnerRule.findOne({ machineId, active: true,startTime: { $lte: stopTime }, endTime: { $gte: stopTime } }).session(session);
-//         // console.log('winnerRule', winnerRule)
-//         if (winnerRule) {
-//             const currentTime = moment(stopTime, "HH:mm");
-//             const winnerRuleStartTime = moment(winnerRule.startTime, "HH:mm");
-//             const winnerRuleEndTime = moment(winnerRule.endTime, "HH:mm");
-//             if (currentTime.isSameOrAfter(winnerRuleStartTime) && currentTime.isSameOrBefore(winnerRuleEndTime)) {
-//                 amountCalculation.buttonResults = amountCalculation.buttonResults.map(button => {
-//                     const isAllowed = winnerRule.allowedButtons.includes(button.buttonNumber);
-
-//                     return {
-//                         ...button,
-//                         eligibleForWin: isAllowed,          // normal eligible button
-//                         manualWin: isAllowed // flag for manual winner if manual:true
-//                     };
-//                 });
-//                 winnerRule.active = false;
-//                 await winnerRule.save({ session });
-//                 appliedRule = {
-//                     ruleType: 'WinnerRule',
-//                     ruleId: winnerRule._id
-//                 };
-//             }
-//         }
-
-//         // Decide final pool to use for winners
-//         // console.log('amountCalculation', amountCalculation)
-//         const finalPool = deductionFromPlayers
-//             ? amountCalculation.finalAmount   // when ≤100%
-//             : amountCalculation.totalDeductedAmount;                 // when >100%
-
-//         let finalAmount = finalPool;
-//         let totatDeductedAmount = deductionFromPlayers ? amountCalculation.totalDeductedAmount : 0;
-//         // Winners calculation
-//         const winners = determineWinners(amountCalculation.buttonResults, finalPool, totalBetAmount, maxWinners, isJackpotWinner);
-
-//         // Adjust deposit
-//         let adjustedDeductedAmount = deductionAmount;
-//         let totalAdded = 0;
-//         let isManualWin = winners?.isManualWin || false;
-//         const payoutAmount = winners?.winners.reduce((sum, winner) => sum + winner.payOutAmount, 0) || 0;
-
-//         // if (isManualWin) {
-//         //     console.log('isManualWin', isManualWin)
-//         //     console.log('winners?.totalAdded', winners?.totalAdded)
-//         //     totalAdded = winners?.totalAdded;
-//         //     adjustedDeductedAmount = 0;
-//         //     machine.depositAmount = Math.max(0, machine.depositAmount - totalAdded);
-//         //     console.log('totalAdded', totalAdded)
-//         //     console.log('adjustedDeductedAmount', adjustedDeductedAmount)
-//         //     console.log('machine.depositAmount', machine.depositAmount)
-//         // } else {
-//         if (!deductionFromPlayers) {
-//             // Payout above 100% must come from machine deposit
-//             // console.log('finalPool', finalPool)
-//             // console.log('winners?.unusedAmount', winners?.unusedAmount)
-//             // console.log('winners?.totalAdded', winners?.totalAdded)
-//             const extraPayout = finalPool - amountCalculation.totalBetAmount + winners?.totalAdded;
-//             const unusedFinalAmount = winners?.unusedAmount || 0;
-//             // console.log('extraPayout', extraPayout)
-//             if (machine.depositAmount < extraPayout) {
-//                 throw new ErrorHandler(
-//                     `Insufficient machine deposit to cover extra payout. Needed ${extraPayout}, available ${machine.depositAmount}`,
-//                     400
-//                 );
-//             }
-//             const totalDeductedAmount = extraPayout - unusedFinalAmount;
-//             // console.log('totalDeductedAmount', totalDeductedAmount)
-//             machine.depositAmount = Math.max(0, machine.depositAmount - totalBetAmount + payoutAmount);
-//             totalAdded = Math.max(0, finalPool - totalBetAmount - unusedFinalAmount);
-//         } else {
-//             // Track profits/losses
-//             totalAdded = Math.max(0, winners?.totalAdded);
-//             // adjustedDeductedAmount -= winners?.totalAdded;
-//             adjustedDeductedAmount += winners?.unusedAmount;
-//             // console.log('winners?.totalAdded', winners?.totalAdded)
-//             // console.log('winners?.unusedAmount', winners?.unusedAmount)
-//             // console.log('adjustedDeductedAmount', adjustedDeductedAmount)
-//             // console.log('winners?.totalAdded', winners?.totalAdded)
-
-//             // console.log('winners?.totalAddToWinnerToPressCount', winners?.totalAddToWinnerToPressCount)
-//             if (winners?.totalAddToWinnerToPressCount > 0) {
-//                 adjustedDeductedAmount = winners?.totalAdded - deductionAmount;
-//                 machine.depositAmount = Math.max(0, machine.depositAmount - totalBetAmount + payoutAmount);
-//                 console.log('winners?.totalAdded', machine.depositAmount, winners?.totalAdded)
-//                 totalAdded = winners?.totalAdded;
-//             } else {
-//                 console.log('adjutedDeductedAmount', adjustedDeductedAmount)
-//                 // Prevent negative deduction
-//                 adjustedDeductedAmount = Math.abs(adjustedDeductedAmount);
-//                 // console.log('adjustedDeductedAmount', adjustedDeductedAmount)
-//                 machine.depositAmount = Math.max(0, machine.depositAmount - totalBetAmount + payoutAmount);
-//                 totalAdded = Math.max(0, winners?.totalAdded);
-//                 console.log('totalAdded', totalAdded)
-//                 // console.log('machine.depositAmount', machine.depositAmount)
-//             }
-//         }
-//         // }
-
-//         // console.log('winners', winners)
-
-
-//         // Generate session ID
-//         const sessionId = generateSessionId();
-
-//         // Create game session and store in database
-//         const gameSession = new GameSession({
-//             sessionId,
-//             machineId,
-//             startTime: stopTime, // Using stop time as the reference
-//             endTime: stopTime,
-//             totalDuration: 0, // Not applicable for this use case
-//             balanceBeforeGame: balanceBeforeGame,
-//             balanceAfterGame: machine.depositAmount,
-//             buttonPresses: amountCalculation.buttonResults.map(button => ({
-//                 buttonNumber: button.buttonNumber,
-//                 pressCount: button.pressCount,
-//                 totalAmount: button.finalAmount // Individual button amount (no deduction)
-//             })),
-//             gameTimeFrames: [{
-//                 time: relevantTimeFrame.time,
-//                 percentage: relevantTimeFrame.percentage,
-//                 deductedPercentage: deductionPercentage,
-//                 remainingPercentage: relevantTimeFrame.percentage - deductionPercentage
-//             }],
-//             totalBetAmount: amountCalculation.totalBetAmount,
-//             totalDeductedAmount: Math.abs(totatDeductedAmount),
-//             finalAmount: Math.abs(finalAmount),
-//             winners: winners?.winners.filter(w => w.isWinner).map(winner => ({
-//                 buttonNumber: winner.buttonNumber,
-//                 amount: winner.amount,
-//                 payOutAmount: winner.payOutAmount,
-//                 isWinner: winner.isWinner,
-//                 winnerType: winner.winnerType || 'regular'
-//             })),
-//             appliedRule: appliedRule,
-//             // 👇 new tracking fields
-//             unusedAmount: winners?.unusedAmount,
-//             totalAdded: totalAdded,
-//             adjustedDeductedAmount: adjustedDeductedAmount,
-//             status: "Completed"
-//         });
-
-//         // Save machine with updated balance
-//         await machine.save({ session });
-
-//         // Create machine transaction record
-//         const machineTransaction = new MachineTransaction({
-//             machineId: machine._id,
-//             sessionId: sessionId,
-//             totalBetAmount: amountCalculation.totalBetAmount,
-//             finalAmount: Math.abs(finalAmount),
-//             deductedAmount: Math.abs(totatDeductedAmount),
-//             unusedAmount: winners?.unusedAmount || 0,
-//             totalAdded: totalAdded || 0,
-//             payoutAmount: winners?.winners.reduce((sum, winner) => sum + winner.payOutAmount, 0) || 0,
-//             percentageDeducted: adjustedDeductedAmount,
-//             applyPercentageDeducted: deductionPercentage,
-//             applyPercentageValue: amountCalculation.totalDeductedAmount,
-//             remainingBalance: machine.depositAmount,
-//             winnerTypes: winners?.winners.filter(w => w.isWinner).map(w => w.winnerType || 'regular') || [],
-//             note: `Game session ${sessionId} - ${deductionFromPlayers ? 'Deduction from players' : 'Payout from machine deposit'}`
-//         });
-
-//         await machineTransaction.save({ session });
-
-//         // Save game session
-//         await gameSession.save({ session });
-
-//         // Populate machine details
-//         await gameSession.populate('machineId', 'machineName machineNumber status location');
-
-//         // Commit transaction
-//         await session.commitTransaction();
-
-//         // const endTime = Date.now();
-//         // const duration = endTime - startTime;
-//         // console.log('startTime', startTime)
-//         // console.log('endTime', endTime)
-//         // console.log('duration', duration)
-//         // if (duration < minimumTime) {
-//         //     await new Promise(resolve => setTimeout(resolve, minimumTime - duration));
-//         // }
-
-//         // Return processed results WITH storage confirmation
-//         res.status(201).json({
-//             // success: true,
-//             // message: 'Game processed and stored successfully',
-//             data: {
-//                 // sessionId: gameSession.sessionId,
-//                 // machine: {
-//                 //     _id: machine._id,
-//                 //     machineName: machine.machineName,
-//                 //     machineNumber: machine.machineNumber,
-//                 //     status: machine.status,
-//                 //     remainingDeposit: machine.depositAmount
-//                 // },
-//                 // stopTime: stopTime,
-//                 // relevantTimeFrame: {
-//                 //     time: relevantTimeFrame.time,
-//                 //     percentage: relevantTimeFrame.percentage
-//                 // },
-//                 // balanceBeforeGame: balanceBeforeGame,
-//                 // balanceAfterGame: machine.depositAmount,
-//                 // totalBetAmount: amountCalculation.totalBetAmount,
-//                 // totalDeductedAmount: Math.abs(totatDeductedAmount),
-//                 // finalAmount: Math.abs(finalAmount),
-//                 // deductionPercentage: deductionPercentage,
-//                 // buttonResults: amountCalculation.buttonResults.map(button => ({
-//                 //     buttonNumber: button.buttonNumber,
-//                 //     pressCount: button.pressCount,
-//                 //     buttonAmount: button.finalAmount // Individual button amount (no deduction)
-//                 // })),
-//                 winners: winners?.winners.filter(w => w.isWinner).map(winner => ({
-//                     buttonNumber: winner.buttonNumber,
-//                     amount: winner.amount,
-//                     payOutAmount: winner.payOutAmount,
-//                     isWinner: winner.isWinner,
-//                     // winnerType: winner.winnerType || 'regular'
-//                 })),
-//                 // unusedAmount: winners?.unusedAmount,
-//                 // totalAdded: totalAdded,
-//                 // adjustedDeductedAmount,
-//                 // processingTime: new Date().toISOString(),
-//                 // storedAt: gameSession.createdAt
-//             }
-//         });
-
-//     } catch (error) {
-//         await session.abortTransaction();
-//         return next(error);
-//     } finally {
-//         await session.endSession();
-//     }
-// });
-
-export const processButtonPresses = catchAsyncError(async (req, res, next) => {
+// stop game session
+export const stopGameSession = catchAsyncError(async (req, res, next) => {
     // const startTime = Date.now();
     // const minimumTime = 10000; // 10 seconds
     const { sessionId } = req.body;
@@ -943,6 +589,364 @@ export const processButtonPresses = catchAsyncError(async (req, res, next) => {
             isLive: isLive,
             session: gameSession.toObject()
         });
+
+        // Return processed results WITH storage confirmation
+        res.status(201).json({
+            // success: true,
+            // message: 'Game processed and stored successfully',
+            data: {
+                // sessionId: gameSession.sessionId,
+                // machine: {
+                //     _id: machine._id,
+                //     machineName: machine.machineName,
+                //     machineNumber: machine.machineNumber,
+                //     status: machine.status,
+                //     remainingDeposit: machine.depositAmount
+                // },
+                // stopTime: stopTime,
+                // relevantTimeFrame: {
+                //     time: relevantTimeFrame.time,
+                //     percentage: relevantTimeFrame.percentage
+                // },
+                // balanceBeforeGame: balanceBeforeGame,
+                // balanceAfterGame: machine.depositAmount,
+                // totalBetAmount: amountCalculation.totalBetAmount,
+                // totalDeductedAmount: Math.abs(totatDeductedAmount),
+                // finalAmount: Math.abs(finalAmount),
+                // deductionPercentage: deductionPercentage,
+                // buttonResults: amountCalculation.buttonResults.map(button => ({
+                //     buttonNumber: button.buttonNumber,
+                //     pressCount: button.pressCount,
+                //     buttonAmount: button.finalAmount // Individual button amount (no deduction)
+                // })),
+                winners: winners?.winners.filter(w => w.isWinner).map(winner => ({
+                    buttonNumber: winner.buttonNumber,
+                    amount: winner.amount,
+                    payOutAmount: winner.payOutAmount,
+                    isWinner: winner.isWinner,
+                    // winnerType: winner.winnerType || 'regular'
+                })),
+                // unusedAmount: winners?.unusedAmount,
+                // totalAdded: totalAdded,
+                // adjustedDeductedAmount,
+                // processingTime: new Date().toISOString(),
+                // storedAt: gameSession.createdAt
+            }
+        });
+
+    } catch (error) {
+        await session.abortTransaction();
+        return next(error);
+    } finally {
+        await session.endSession();
+    }
+});
+
+// version 1.0 features
+// process button presses
+export const processButtonPresses = catchAsyncError(async (req, res, next) => {
+    // const startTime = Date.now();
+    // const minimumTime = 10000; // 10 seconds
+    const { machineId, buttonPresses } = req.body;
+
+    // Generate current time in IST (Indian Standard Time), 24-hour HH:mm
+    const stopTime = moment().tz("Asia/Kolkata").format("HH:mm");
+    const now = moment().tz('Asia/Kolkata').toDate();
+    // console.log('stopTime', stopTime);
+    // console.log('stopTime', stopTime);
+
+    // Start database transaction for atomic operations
+    const session = await mongoose.startSession();
+    try {
+        session.startTransaction();
+
+        const machine = await Machine.findById(machineId).session(session);
+        if (!machine) {
+            throw new ErrorHandler('Machine not found', 404);
+        }
+        const balanceBeforeGame = machine.depositAmount;
+        // console.log('machine', machine.depositAmount)
+
+        // Check if machine is active
+        if (machine.status !== 'Active') {
+            throw new ErrorHandler('Machine is not active', 400);
+        }
+
+        machine.lastActive = now;
+        machine.isMachineOffline = false;
+
+        // Find the relevant timeframe for this stop time
+        const stopMoment = moment(stopTime, 'HH:mm', true);
+        if (!stopMoment.isValid()) {
+            throw new ErrorHandler('Invalid stop time format', 400);
+        }
+
+        // // Validate game session data
+        // const validation = validateGameSession(req.body);
+        // if (!validation.isValid) {
+        //     return next(new ErrorHandler(validation.errors.join(', '), 400));
+        // }
+
+        // Calculate total bet amount
+        const totalBetAmount = buttonPresses.reduce((total, button) => {
+            return total + (button.pressCount * 10); // 10 rupees per press
+        }, 0);
+
+        // Calculate deduction amount first to check if machine has enough for the deduction
+        const timeFrames = await TimeFrame.find({ machineId }).sort({ time: 1 }).session(session);
+        // console.log('timeFrames', timeFrames);
+        if (timeFrames.length === 0) {
+            throw new ErrorHandler('No timeframes configured for this machine', 400);
+        }
+
+        const relevantTimeFrame = timeFrames.reduce((latest, tf) => {
+            const tfMoment = moment(tf.time, 'HH:mm');
+            return tfMoment.isSameOrBefore(stopMoment) ? tf : latest;
+        }, null) || timeFrames[timeFrames.length - 1];
+
+        // console.log('relevantTimeFrame', relevantTimeFrame);
+
+        // console.log('all time frame', timeFrames);
+        // console.log('relevent time', relevantTimeFrame);
+
+
+        // Calculate deduction amount
+        const deductionPercentage = relevantTimeFrame ? relevantTimeFrame.percentage : 0;
+        // const deductionAmount = (totalBetAmount * deductionPercentage) / 100;
+
+        // Calculate deduction
+        let deductionAmount = 0;
+        let deductionFromPlayers = true;
+
+        if (deductionPercentage <= 100) {
+            deductionAmount = (totalBetAmount * deductionPercentage) / 100;
+        } else {
+            deductionAmount = 0; // no deduction from players
+            deductionFromPlayers = false;
+        }
+
+        // Check if machine has enough for deduction/payout
+        if (machine.depositAmount < totalBetAmount && deductionFromPlayers) {
+            throw new ErrorHandler(
+                `Insufficient deposit. Machine has ${machine.depositAmount} but needs ${totalBetAmount} for deduction`,
+                400
+            );
+        }
+
+        // --- Amount calculation ---
+        const amountCalculation = calculateFinalAmounts(
+            buttonPresses,
+            deductionPercentage,
+            10 // per press
+        );
+
+        let isJackpotWinner = false;
+        let maxWinners = 1;
+        let appliedRule = null;
+
+        // Check if jackpot winner is active
+        const jackpotWinner = await jackpotWinnerModal.findOne({ machineId, active: true, startTime: { $lte: stopTime }, endTime: { $gte: stopTime } }).session(session);
+        // console.log('jackpotWinner', jackpotWinner)
+        if (jackpotWinner) {
+            const currentTime = moment(stopTime, "HH:mm");
+            const jackpotWinnerStartTime = moment(jackpotWinner.startTime, "HH:mm");
+            const jackpotWinnerEndTime = moment(jackpotWinner.endTime, "HH:mm");
+            if (currentTime.isSameOrAfter(jackpotWinnerStartTime) && currentTime.isSameOrBefore(jackpotWinnerEndTime)) {
+                isJackpotWinner = true;
+                maxWinners = jackpotWinner.maxWinners;
+            }
+            jackpotWinner.active = false;
+            await jackpotWinner.save({ session });
+            appliedRule = {
+                ruleType: 'JackpotWinner',
+                ruleId: jackpotWinner._id
+            };
+        }
+
+        // Check if winner rule is active
+        const winnerRule = await WinnerRule.findOne({ machineId, active: true,startTime: { $lte: stopTime }, endTime: { $gte: stopTime } }).session(session);
+        // console.log('winnerRule', winnerRule)
+        if (winnerRule) {
+            const currentTime = moment(stopTime, "HH:mm");
+            const winnerRuleStartTime = moment(winnerRule.startTime, "HH:mm");
+            const winnerRuleEndTime = moment(winnerRule.endTime, "HH:mm");
+            if (currentTime.isSameOrAfter(winnerRuleStartTime) && currentTime.isSameOrBefore(winnerRuleEndTime)) {
+                amountCalculation.buttonResults = amountCalculation.buttonResults.map(button => {
+                    const isAllowed = winnerRule.allowedButtons.includes(button.buttonNumber);
+
+                    return {
+                        ...button,
+                        eligibleForWin: isAllowed,          // normal eligible button
+                        manualWin: isAllowed // flag for manual winner if manual:true
+                    };
+                });
+                winnerRule.active = false;
+                await winnerRule.save({ session });
+                appliedRule = {
+                    ruleType: 'WinnerRule',
+                    ruleId: winnerRule._id
+                };
+            }
+        }
+
+        // Decide final pool to use for winners
+        // console.log('amountCalculation', amountCalculation)
+        const finalPool = deductionFromPlayers
+            ? amountCalculation.finalAmount   // when ≤100%
+            : amountCalculation.totalDeductedAmount;                 // when >100%
+
+        let finalAmount = finalPool;
+        let totatDeductedAmount = deductionFromPlayers ? amountCalculation.totalDeductedAmount : 0;
+        // Winners calculation
+        const winners = determineWinners(amountCalculation.buttonResults, finalPool, totalBetAmount, maxWinners, isJackpotWinner);
+
+        // Adjust deposit
+        let adjustedDeductedAmount = deductionAmount;
+        let totalAdded = 0;
+        let isManualWin = winners?.isManualWin || false;
+        const payoutAmount = winners?.winners.reduce((sum, winner) => sum + winner.payOutAmount, 0) || 0;
+
+        // if (isManualWin) {
+        //     console.log('isManualWin', isManualWin)
+        //     console.log('winners?.totalAdded', winners?.totalAdded)
+        //     totalAdded = winners?.totalAdded;
+        //     adjustedDeductedAmount = 0;
+        //     machine.depositAmount = Math.max(0, machine.depositAmount - totalAdded);
+        //     console.log('totalAdded', totalAdded)
+        //     console.log('adjustedDeductedAmount', adjustedDeductedAmount)
+        //     console.log('machine.depositAmount', machine.depositAmount)
+        // } else {
+        if (!deductionFromPlayers) {
+            // Payout above 100% must come from machine deposit
+            // console.log('finalPool', finalPool)
+            // console.log('winners?.unusedAmount', winners?.unusedAmount)
+            // console.log('winners?.totalAdded', winners?.totalAdded)
+            const extraPayout = finalPool - amountCalculation.totalBetAmount + winners?.totalAdded;
+            const unusedFinalAmount = winners?.unusedAmount || 0;
+            // console.log('extraPayout', extraPayout)
+            if (machine.depositAmount < extraPayout) {
+                throw new ErrorHandler(
+                    `Insufficient machine deposit to cover extra payout. Needed ${extraPayout}, available ${machine.depositAmount}`,
+                    400
+                );
+            }
+            const totalDeductedAmount = extraPayout - unusedFinalAmount;
+            // console.log('totalDeductedAmount', totalDeductedAmount)
+            machine.depositAmount = Math.max(0, machine.depositAmount - totalBetAmount + payoutAmount);
+            totalAdded = Math.max(0, finalPool - totalBetAmount - unusedFinalAmount);
+        } else {
+            // Track profits/losses
+            totalAdded = Math.max(0, winners?.totalAdded);
+            // adjustedDeductedAmount -= winners?.totalAdded;
+            adjustedDeductedAmount += winners?.unusedAmount;
+            // console.log('winners?.totalAdded', winners?.totalAdded)
+            // console.log('winners?.unusedAmount', winners?.unusedAmount)
+            // console.log('adjustedDeductedAmount', adjustedDeductedAmount)
+            // console.log('winners?.totalAdded', winners?.totalAdded)
+
+            // console.log('winners?.totalAddToWinnerToPressCount', winners?.totalAddToWinnerToPressCount)
+            if (winners?.totalAddToWinnerToPressCount > 0) {
+                adjustedDeductedAmount = winners?.totalAdded - deductionAmount;
+                machine.depositAmount = Math.max(0, machine.depositAmount - totalBetAmount + payoutAmount);
+                console.log('winners?.totalAdded', machine.depositAmount, winners?.totalAdded)
+                totalAdded = winners?.totalAdded;
+            } else {
+                console.log('adjutedDeductedAmount', adjustedDeductedAmount)
+                // Prevent negative deduction
+                adjustedDeductedAmount = Math.abs(adjustedDeductedAmount);
+                // console.log('adjustedDeductedAmount', adjustedDeductedAmount)
+                machine.depositAmount = Math.max(0, machine.depositAmount - totalBetAmount + payoutAmount);
+                totalAdded = Math.max(0, winners?.totalAdded);
+                console.log('totalAdded', totalAdded)
+                // console.log('machine.depositAmount', machine.depositAmount)
+            }
+        }
+        // }
+
+        // console.log('winners', winners)
+
+
+        // Generate session ID
+        const sessionId = generateSessionId();
+
+        // Create game session and store in database
+        const gameSession = new GameSession({
+            sessionId,
+            machineId,
+            startTime: stopTime, // Using stop time as the reference
+            endTime: stopTime,
+            totalDuration: 0, // Not applicable for this use case
+            balanceBeforeGame: balanceBeforeGame,
+            balanceAfterGame: machine.depositAmount,
+            buttonPresses: amountCalculation.buttonResults.map(button => ({
+                buttonNumber: button.buttonNumber,
+                pressCount: button.pressCount,
+                totalAmount: button.finalAmount // Individual button amount (no deduction)
+            })),
+            gameTimeFrames: [{
+                time: relevantTimeFrame.time,
+                percentage: relevantTimeFrame.percentage,
+                deductedPercentage: deductionPercentage,
+                remainingPercentage: relevantTimeFrame.percentage - deductionPercentage
+            }],
+            totalBetAmount: amountCalculation.totalBetAmount,
+            totalDeductedAmount: Math.abs(totatDeductedAmount),
+            finalAmount: Math.abs(finalAmount),
+            winners: winners?.winners.filter(w => w.isWinner).map(winner => ({
+                buttonNumber: winner.buttonNumber,
+                amount: winner.amount,
+                payOutAmount: winner.payOutAmount,
+                isWinner: winner.isWinner,
+                winnerType: winner.winnerType || 'regular'
+            })),
+            appliedRule: appliedRule,
+            // 👇 new tracking fields
+            unusedAmount: winners?.unusedAmount,
+            totalAdded: totalAdded,
+            adjustedDeductedAmount: adjustedDeductedAmount,
+            status: "Completed"
+        });
+
+        // Save machine with updated balance
+        await machine.save({ session });
+
+        // Create machine transaction record
+        const machineTransaction = new MachineTransaction({
+            machineId: machine._id,
+            sessionId: sessionId,
+            totalBetAmount: amountCalculation.totalBetAmount,
+            finalAmount: Math.abs(finalAmount),
+            deductedAmount: Math.abs(totatDeductedAmount),
+            unusedAmount: winners?.unusedAmount || 0,
+            totalAdded: totalAdded || 0,
+            payoutAmount: winners?.winners.reduce((sum, winner) => sum + winner.payOutAmount, 0) || 0,
+            percentageDeducted: adjustedDeductedAmount,
+            applyPercentageDeducted: deductionPercentage,
+            applyPercentageValue: amountCalculation.totalDeductedAmount,
+            remainingBalance: machine.depositAmount,
+            winnerTypes: winners?.winners.filter(w => w.isWinner).map(w => w.winnerType || 'regular') || [],
+            note: `Game session ${sessionId} - ${deductionFromPlayers ? 'Deduction from players' : 'Payout from machine deposit'}`
+        });
+
+        await machineTransaction.save({ session });
+
+        // Save game session
+        await gameSession.save({ session });
+
+        // Populate machine details
+        await gameSession.populate('machineId', 'machineName machineNumber status location');
+
+        // Commit transaction
+        await session.commitTransaction();
+
+        // const endTime = Date.now();
+        // const duration = endTime - startTime;
+        // console.log('startTime', startTime)
+        // console.log('endTime', endTime)
+        // console.log('duration', duration)
+        // if (duration < minimumTime) {
+        //     await new Promise(resolve => setTimeout(resolve, minimumTime - duration));
+        // }
 
         // Return processed results WITH storage confirmation
         res.status(201).json({
