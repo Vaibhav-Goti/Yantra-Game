@@ -14,17 +14,17 @@ import {
     getMachineStatus,
     updateMachineStatus,
     startGameSession,
-    storeButtonPresses
+    storeButtonPresses,
+    stopGameSession
 } from '../controllers/hardware.controller.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
 
+// version 1.0 features
 // Hardware integration routes (no authentication needed - called directly from hardware)
 router.route('/process-game').post(reqBodyValidator(buttonPressValidation), processButtonPresses); // Main endpoint
 router.route('/machine-status').post(updateMachineStatus); // Hardware status update
-router.route('/start-game').post(startGameSession);
-router.route('/store-button-presses').post(storeButtonPresses);
 
 // Admin routes (require authentication for accessing stored data)
 router.route('/session/:sessionId').get(authMiddleware, getGameSession);
