@@ -585,7 +585,7 @@ function MachineGameSessions() {
 
                             {selectedButtons.length > 0 && <div className="flex items-center px-3 py-2 bg-gray-100 rounded-md border border-gray-300">
                               <span className="text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">
-                                Net Amount: <span className="text-blue-600 font-semibold">₹{payAmount || 0}</span>
+                                Net Amount: <span className={`font-semibold ${(payAmount || 0) >= 0 ? 'text-blue-600' : 'text-red-600'}`}>₹{payAmount || 0}</span>
                               </span>
                             </div>}
 
