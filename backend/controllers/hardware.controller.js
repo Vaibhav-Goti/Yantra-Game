@@ -29,9 +29,9 @@ export const startGameSession = catchAsyncError(async (req, res, next) => {
         return next(new ErrorHandler('Machine not found', 404));
     }
 
-    const activeSessionsCount = await GameSession.countDocuments({ machineId, status: 'Active' });
-    if (activeSessionsCount > 0) {
-        return next(new ErrorHandler('Game session already started', 400));
+    const activeSession = await GameSession.findOne({ machineId, status: 'Active' });
+    if (activeSession) {
+        return next(new ErrorHandler('Game session already started', 400,  activeSession.sessionId));
     }
 
     // Update machine active status based on timestamp
@@ -87,7 +87,7 @@ export const storeButtonPresses = catchAsyncError(async (req, res, next) => {
     // const { sessionId, buttonNumber, pressCount } = req.body;
     const gameSession = await GameSession.findOne({ sessionId });
     if (!gameSession || gameSession.status !== 'Active') {
-        return next(new ErrorHandler('Game session not found', 404));
+        return next(new ErrorHandler('Game session not found', 404, gameSession.sessionId));
     }
 
     // await GameSession.findOneAndUpdate(
