@@ -18,6 +18,8 @@ export const SocketProvider = ({ children }) => {
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 5,
+      secure: true,
+      timeout: 30000,
     });
 
     socketInstance.on('connect', () => {

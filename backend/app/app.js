@@ -1,5 +1,6 @@
 import express from 'express'
 import cors from 'cors'
+import cookieParser from 'cookie-parser'
 import dotenv from 'dotenv';
 import winston from "winston";
 import moment from 'moment-timezone';
@@ -63,7 +64,12 @@ export const logger = winston.createLogger({
 
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }));
-app.use(cors())
+app.use(cookieParser()) // Parse cookies from request
+// CORS configuration to allow credentials (cookies)
+app.use(cors({
+    origin: process.env.FRONTEND_URL || process.env.FRONTENT_BASEURL || '*',
+    credentials: true, // Allow cookies to be sent
+}))
 app.use(responseFormatter) // Apply timezone formatting to all responses
 
 // Logger middleware
