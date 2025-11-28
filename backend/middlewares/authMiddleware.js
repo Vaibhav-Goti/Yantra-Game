@@ -20,6 +20,15 @@ export default catchAsyncError(async (req, res, next) => {
             return next(new ErrorHandler('Access Denied! You are not register. Please register first!', 401));
         }
 
+        // Check if token version matches current user token version
+        // This ensures that if user logged in on another device, old tokens are immediately invalidated
+        const tokenVersion = decoded.tokenVersion || 0;
+        const currentTokenVersion = user.tokenVersion || 0;
+        
+        if (tokenVersion !== currentTokenVersion) {
+            return next(new ErrorHandler('Session expired! Please login again.', 401));
+        }
+
         const userData = user.toObject()
         delete userData.password;
         delete userData.refreshToken;

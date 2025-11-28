@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Dropdown, DropdownItem, DropdownDivider } from '../ui';
 import { useFetchUserApi, useLogoutApi } from '../../hooks/useUserApi';
-import { getRefreshToken } from '../../utils/storageUtils';
 import { useNavigate } from 'react-router-dom';
 
 const Header = ({
@@ -16,7 +15,8 @@ const Header = ({
   const { logout } = useLogoutApi()
 
   const handleLogout = () => {
-    logout({ refreshToken: getRefreshToken() })
+    // Refresh token is in httpOnly cookie, backend will handle it
+    logout({})
   }
 
   const handleChangePassword = () => {

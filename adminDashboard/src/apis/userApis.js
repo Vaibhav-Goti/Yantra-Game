@@ -1,7 +1,6 @@
 import apiUtils from "./apiUtils";
 
 export const loginApi = async (data) => {
-    console.log(data)
     return apiUtils('POST', '/login', {}, data)
 }
 

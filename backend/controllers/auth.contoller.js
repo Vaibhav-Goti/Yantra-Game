@@ -24,8 +24,11 @@ export const login = catchAsyncError(async (req, res, next) => {
 
     if (!isPasswordMatch) return next(new ErrorHandler('Invalid Password!', 400))
 
+    // Increment token version to invalidate all previous tokens
+    isUser.tokenVersion = (isUser.tokenVersion || 0) + 1
+    
     // Generate new tokens
-    const token = generateToken({ id: isUser._id }, '15m')
+    const token = generateToken({ id: isUser._id, tokenVersion: isUser.tokenVersion }, '15m')
     const refreshToken = generateRefreshToken()
     const refreshTokenHashed = generateToken({refreshToken}, '7d')
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
@@ -35,17 +38,28 @@ export const login = catchAsyncError(async (req, res, next) => {
     isUser.expiresAt = expiresAt
     await isUser.save()
 
+    // Set refresh token as httpOnly cookie (secure, not accessible via JavaScript)
+    const cookieOptions = {
+        httpOnly: true, // Prevents JavaScript access (XSS protection)
+        secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+        sameSite: 'strict', // CSRF protection
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        path: '/' // Available for all routes
+    }
+    res.cookie('refreshToken', refreshTokenHashed, cookieOptions)
+
     res.status(200).json({
         success: true,
         message: 'Login Successfully!',
         data: user,
-        token,
-        refreshToken: refreshTokenHashed // Return the raw refresh token, not the hashed one
+        token
+        // Don't return refreshToken in response body - it's in httpOnly cookie
     })
 })
 
 export const refreshToken = catchAsyncError(async (req, res, next) => {
-    const { refreshToken } = req.body
+    // Get refresh token from httpOnly cookie instead of request body
+    const refreshToken = req.cookies?.refreshToken
 
     if (!refreshToken) {
         return next(new ErrorHandler('Refresh token is required!', 400))
@@ -68,8 +82,11 @@ export const refreshToken = catchAsyncError(async (req, res, next) => {
             return next(new ErrorHandler('Invalid or expired refresh token!', 401))
         }   
 
+        // Increment token version to invalidate all previous tokens
+        users.tokenVersion = (users.tokenVersion || 0) + 1
+        
         // Generate new tokens
-        const newToken = generateToken({ id: users._id }, '15m')
+        const newToken = generateToken({ id: users._id, tokenVersion: users.tokenVersion }, '15m')
         const newRefreshToken = generateRefreshToken()
         const newRefreshTokenHashed = generateToken({refreshToken: newRefreshToken}, '7d')
 
@@ -78,11 +95,21 @@ export const refreshToken = catchAsyncError(async (req, res, next) => {
         users.expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
         await users.save()
 
+        // Set new refresh token as httpOnly cookie
+        const cookieOptions = {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+            path: '/'
+        }
+        res.cookie('refreshToken', newRefreshTokenHashed, cookieOptions)
+
         res.status(200).json({
             success: true,
             message: 'Token refreshed successfully!',
-            token: newToken,
-            refreshToken: newRefreshTokenHashed // Return raw token, not hashed
+            token: newToken
+            // Don't return refreshToken in response body - it's in httpOnly cookie
         })
     } catch (error) {
         return next(new ErrorHandler('Invalid or expired refresh token!', 401))
@@ -91,34 +118,37 @@ export const refreshToken = catchAsyncError(async (req, res, next) => {
 
 export const logout = catchAsyncError(async (req, res, next) => {
     try {
-        const { refreshToken } = req.body
+        // Get refresh token from httpOnly cookie
+        const refreshToken = req.cookies?.refreshToken
         
-        if (!refreshToken) {
-            return res.status(200).json({
-                success: true,
-                message: 'Logout successful!'
-            })
-        }
+        if (refreshToken) {
+            try {
+                const decoded = verifyToken(refreshToken)
+                if (decoded && decoded.refreshToken) {
+                    // Find user with matching refresh token
+                    const user = await User.findOne({ 
+                        refreshToken: decoded.refreshToken
+                    })
 
-        // Find all users and check if any has a matching hashed refresh token
-        const users = await User.find({ 
-            refreshToken: { $ne: null }
-        })
-
-        let user = null
-        for (const u of users) {
-            const isMatch = await verifyHashPassword(refreshToken, u.refreshToken)
-            if (isMatch) {
-                user = u
-                break
+                    if (user) {
+                        user.refreshToken = null
+                        user.expiresAt = null
+                        await user.save()
+                    }
+                }
+            } catch (error) {
+                // If token is invalid, just clear the cookie
+                console.log('Error during logout token verification:', error.message)
             }
         }
 
-        if (user) {
-            user.refreshToken = null
-            user.expiresAt = null
-            await user.save()
-        }
+        // Clear refresh token cookie
+        res.clearCookie('refreshToken', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            path: '/'
+        })
 
         return res.status(200).json({
             success: true,
@@ -126,6 +156,13 @@ export const logout = catchAsyncError(async (req, res, next) => {
         })
     } catch (error) {
         console.log('Error during logout:', error.message)
+        // Clear cookie even if there's an error
+        res.clearCookie('refreshToken', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            path: '/'
+        })
         return res.status(200).json({
             success: true,
             message: 'Logout successful!'
@@ -145,14 +182,21 @@ export const changePassword = catchAsyncError(async (req, res, next) => {
     const isPasswordMatch = await verifyHashPassword(oldPassword, user.password)
     if (!isPasswordMatch) return next(new ErrorHandler('Invalid Password!', 400))
 
+    // Increment token version to invalidate all other sessions
+    user.tokenVersion = (user.tokenVersion || 0) + 1
+    
     // console.log('Before save - newPassword:', newPassword)
     user.password = newPassword
     await user.save()
     // console.log('After save - user.password:', user.password)
 
+    // Generate new token so user can continue their session
+    const newToken = generateToken({ id: user._id, tokenVersion: user.tokenVersion }, '15m')
+
     res.status(200).json({
         success: true,
-        message: 'Password changed successfully!'
+        message: 'Password changed successfully!',
+        token: newToken
     })
 })
 
@@ -209,8 +253,9 @@ export const resetPassword = catchAsyncError(async (req, res, next) => {
         return next(new ErrorHandler('Invalid or expired reset token!', 400))
     }
 
-    // Update password
+    // Update password and invalidate all existing sessions
     user.password = newPassword
+    user.tokenVersion = (user.tokenVersion || 0) + 1
     user.resetPasswordToken = null
     user.resetPasswordExpires = null
     await user.save()

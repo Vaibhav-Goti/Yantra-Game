@@ -1,16 +1,13 @@
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1'
 import { QueryClient } from "@tanstack/react-query"
 import axios, { isAxiosError } from "axios"
-import { clearTokens, getAccessToken, getRefreshToken, saveAccessToken, saveRefreshToken } from "../utils/storageUtils"
+import { clearTokens, getAccessToken, saveAccessToken } from "../utils/storageUtils"
 import { tostMessage } from "../components/toastMessage"
 
 export const queryClient = new QueryClient()
-const refreshToken = getRefreshToken()
-const accessToken = getAccessToken()
 
 const apiUtils = async (method, endpoint, headers = {}, data = null, signal = null) => {
     const accessToken = getAccessToken()
-    const refreshToken = getRefreshToken()
 
     try {
         const response = await axios({
@@ -19,6 +16,7 @@ const apiUtils = async (method, endpoint, headers = {}, data = null, signal = nu
             headers: { ...headers, Authorization: `Bearer ${accessToken}` },
             data,
             signal,
+            withCredentials: true, // Send cookies (including refresh token) with requests
         })
         return response.data
     } catch (error) {
@@ -27,28 +25,21 @@ const apiUtils = async (method, endpoint, headers = {}, data = null, signal = nu
             const message = error?.response?.data?.message || error?.message || 'Something went wrong'
 
             if (status === 401) {
-                if (refreshToken) {
-                    try {
-                        const response = await axios.post(`${BASE_URL}/refresh`, { refreshToken })
-                        saveAccessToken(response.data.token)
-                        saveRefreshToken(response.data.refreshToken)
-                        // Retry request with new token
-                        return apiUtils(method, endpoint, headers, data, signal)
-                    } catch (refreshError) {
-                        clearTokens()
-                        tostMessage('Error', refreshError.message, 'error')
-                        // window.location.href = '/login'
-                        setTimeout(() => {
-                            window.location.href = '/login'
-                        }, 1000)
-                    }
-                } else {
+                try {
+                    // Refresh token is now in httpOnly cookie, no need to send it in body
+                    const response = await axios.post(`${BASE_URL}/refresh`, {}, {
+                        withCredentials: true // Send cookies with refresh request
+                    })
+                    saveAccessToken(response.data.token)
+                    // Refresh token is automatically stored in httpOnly cookie by backend
+                    // Retry request with new token
+                    return apiUtils(method, endpoint, headers, data, signal)
+                } catch (refreshError) {
                     clearTokens()
-                    tostMessage('Error', 'Session expired!', 'error')
+                    tostMessage('Error', refreshError.message || 'Session expired!', 'error')
                     setTimeout(() => {
                         window.location.href = '/login'
                     }, 1000)
-                    // window.location.href = '/login'
                 }
             }
 

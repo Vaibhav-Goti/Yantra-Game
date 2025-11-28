@@ -15,7 +15,8 @@ function useUserApi() {
       tostMessage('Success', data.message, 'success')
       navigate('/dashboard')
       saveAccessToken(data.token)
-      saveRefreshToken(data.refreshToken)
+      // Refresh token is automatically stored in httpOnly cookie by backend
+      // No need to save it to localStorage for security
     },
     onError: (error) => {
       // console.log(error)
@@ -84,7 +85,8 @@ export const useRefreshToken = () => {
     mutationFn: refreshTokenApi,
     onSuccess: (data) => {
       saveAccessToken(data.token)
-      saveRefreshToken(data.refreshToken)
+      // Refresh token is automatically stored in httpOnly cookie by backend
+      // No need to save it to localStorage for security
     },
     onError: (error) => {
       // console.log('Token refresh failed:', error)
