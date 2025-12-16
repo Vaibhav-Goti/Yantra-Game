@@ -6,8 +6,7 @@ import TimeFrame from "../modals/timeFrame.modal.js";
 import MachineTransaction from "../modals/machineTransaction.modal.js";
 import GameSession from "../modals/gameSession.modal.js";
 import moment from "moment-timezone";
-import GameSession from "../modals/gameSession.modal.js";
-import moment from "moment-timezone";
+
 import {
     getMachineTransactionHistory as getMachineTransactionHistoryUtil,
     getMachineBalanceSummary as getMachineBalanceSummaryUtil,
@@ -696,8 +695,8 @@ export const getMachineDepositHistory = catchAsyncError(async (req, res, next) =
 
 // Get daily balance report for current date only
 export const getDailyBalanceReport = catchAsyncError(async (req, res, next) => {
-    const { machineId } = req.query;
-
+    const { id:machineId } = req.params;
+// console.log('machineId', machineId);
     // Use current date in Asia/Kolkata timezone
     const targetDate = moment.tz('Asia/Kolkata');
 
@@ -711,17 +710,16 @@ export const getDailyBalanceReport = catchAsyncError(async (req, res, next) => {
         query.machineId = new mongoose.Types.ObjectId(machineId);
     }
     
-    const machine = await Machine.findById(machineId);
+    // console.log('machineId', req.params);
+    const machine = await Machine.findOne({ _id: machineId });
     if (!machine) {
         return next(new ErrorHandler('Machine not found', 404));
     }
-
     if (machine.status !== 'Active') {
         return next(new ErrorHandler('Machine is not active', 400));
     }
-
-    // Boolean check: true if deposit > 5000, else false
     const isDepositAboveThreshold = machine.depositAmount > 5000;
+    // console.log('isDepositAboveThreshold', isDepositAboveThreshold);
 
     // Get all game sessions for the specified date
     const gameSessions = await GameSession.find({
