@@ -128,7 +128,7 @@ const MachineTransactionHistory = () => {
           <div>
             <div className="font-medium text-green-600">{row.applyPercentageDeducted}</div>
             {/* <div className="text-xs text-gray-500">Deducted: ₹{row.applyPercentageValue}</div> */}
-            <div className="text-xs text-gray-500">Deducted: ₹{row.deductedAmount}</div>
+            <div className="text-xs text-gray-500">Deducted: {row.deductedAmount}</div>
           </div>
         ),
        },
