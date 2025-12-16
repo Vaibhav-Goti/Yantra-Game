@@ -4,6 +4,8 @@ import Machine from "../modals/machine.modal.js";
 import ErrorHandler from "../utils/errorHandler.js";
 import TimeFrame from "../modals/timeFrame.modal.js";
 import MachineTransaction from "../modals/machineTransaction.modal.js";
+import GameSession from "../modals/gameSession.modal.js";
+import moment from "moment-timezone";
 import {
     getMachineTransactionHistory as getMachineTransactionHistoryUtil,
     getMachineBalanceSummary as getMachineBalanceSummaryUtil,
@@ -687,5 +689,119 @@ export const getMachineDepositHistory = catchAsyncError(async (req, res, next) =
         success: true,
         message: 'Machine deposit fetched successfully',
         data: result.depositAmount
+    });
+});
+
+// Get daily balance report for current date only
+export const getDailyBalanceReport = catchAsyncError(async (req, res, next) => {
+    const { machineId } = req.query;
+
+    // Use current date in Asia/Kolkata timezone
+    const targetDate = moment.tz('Asia/Kolkata');
+
+    // Set timezone to Asia/Kolkata and get start and end of day
+    const startOfDay = targetDate.startOf('day').toDate();
+    const endOfDay = targetDate.endOf('day').toDate();
+
+    // Build query for machineId if provided
+    const query = {};
+    if (machineId) {
+        query.machineId = new mongoose.Types.ObjectId(machineId);
+    }
+    
+    const machine = await Machine.findById(id);
+    if (!machine) {
+        return next(new ErrorHandler('Machine not found', 404));
+    }
+
+    if (machine.status !== 'Active') {
+        return next(new ErrorHandler('Machine is not active', 400));
+    }
+
+    // Boolean check: true if deposit > 5000, else false
+    const isDepositAboveThreshold = machine.depositAmount > 5000;
+
+    // Get all game sessions for the specified date
+    const gameSessions = await GameSession.find({
+        ...query,
+        createdAt: { $gte: startOfDay, $lte: endOfDay },
+        status: 'Completed'
+    }).sort({ createdAt: 1 }); // Sort by creation time ascending
+
+    // Get all machine transactions for the specified date
+    const machineTransactions = await MachineTransaction.find({
+        ...query,
+        createdAt: { $gte: startOfDay, $lte: endOfDay }
+    }).sort({ createdAt: 1 }); // Sort by creation time ascending
+
+    // Calculate total number of games played
+    const totalGamesPlayed = gameSessions.length;
+
+    // Get opening balance (balanceBeforeGame of first game session on that day)
+    let openingBalance = 0;
+    if (gameSessions.length > 0) {
+        // Opening balance is the balance when the first game was played
+        openingBalance = gameSessions[0].balanceBeforeGame || 0;
+    } else {
+        // If no games played on that day, get balance from last transaction before this date
+        const lastTransactionBeforeDate = await MachineTransaction.findOne({
+            ...query,
+            createdAt: { $lt: startOfDay }
+        }).sort({ createdAt: -1 });
+        
+        if (lastTransactionBeforeDate) {
+            openingBalance = lastTransactionBeforeDate.remainingBalance || 0;
+        } else {
+            // If no previous transactions, check machine's initial deposit
+            if (machineId) {
+                const machine = await Machine.findById(machineId);
+                if (machine) {
+                    openingBalance = machine.depositAmount || 0;
+                }
+            }
+        }
+    }
+
+    // Get closing balance (remainingBalance of last transaction on that day)
+    let closingBalance = openingBalance;
+    if (machineTransactions.length > 0) {
+        closingBalance = machineTransactions[machineTransactions.length - 1].remainingBalance || openingBalance;
+    } else if (gameSessions.length > 0) {
+        // If no transactions but there are game sessions, use balanceAfterGame of last session
+        closingBalance = gameSessions[gameSessions.length - 1].balanceAfterGame || openingBalance;
+    }
+
+    // Calculate total number of bets (count of transactions/games)
+    const totalBetCount = gameSessions?.length || 0;
+
+    // Calculate total user winnings (sum of payoutAmount from transactions)
+    const totalUserWinnings = machineTransactions.reduce((sum, transaction) => {
+        return sum + (transaction.payoutAmount || 0);
+    }, 0);
+
+    // Calculate total bet amount (money users bet)
+    const totalBetAmount = machineTransactions.reduce((sum, transaction) => {
+        return sum + (transaction.totalBetAmount || 0);
+    }, 0);
+
+    // Calculate total machine winnings
+    // Machine profit = Money bet by users - Money won by users
+    // The deductedAmount is already part of the machine's profit (house edge)
+    const totalMachineWinnings = totalBetAmount - totalUserWinnings;
+
+    // Prepare simplified response with only required fields
+    const response = {
+        isDepositAboveThreshold: isDepositAboveThreshold,
+        totalBet: totalBetCount,
+        openingBalance: openingBalance,
+        closingBalance: closingBalance,
+        totalUserWinner: totalUserWinnings,
+        totalMachineWin: totalMachineWinnings
+    };
+
+    res.status(200).json({
+        success: true,
+        message: 'Daily balance report fetched successfully',
+        data: response
     });
 });

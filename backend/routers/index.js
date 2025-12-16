@@ -36,4 +36,7 @@ router.use('/api/v1/jackpotwinner', jackpotWinnerRouter)
 import hardwareV2Router from '../routers/hardwareV2.router.js'
 router.use('/api/v2/hardware', hardwareV2Router)
 
+import machineV2Router from '../routers/machine.router.v2.js'
+router.use('/api/v2/machine', machineV2Router)
+
 export default router;
