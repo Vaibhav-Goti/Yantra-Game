@@ -709,7 +709,7 @@ export const getDailyBalanceReport = catchAsyncError(async (req, res, next) => {
         query.machineId = new mongoose.Types.ObjectId(machineId);
     }
     
-    const machine = await Machine.findById(id);
+    const machine = await Machine.findById(machineId);
     if (!machine) {
         return next(new ErrorHandler('Machine not found', 404));
     }
@@ -801,7 +801,7 @@ export const getDailyBalanceReport = catchAsyncError(async (req, res, next) => {
 
     res.status(200).json({
         success: true,
-        message: 'Daily balance report fetched successfully',
+        message: 'Machine deposit status fetched successfully',
         data: response
     });
 });
