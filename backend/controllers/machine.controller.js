@@ -721,6 +721,9 @@ export const getDailyBalanceReport = catchAsyncError(async (req, res, next) => {
     const isDepositAboveThreshold = machine.depositAmount > 5000;
     // console.log('isDepositAboveThreshold', isDepositAboveThreshold);
 
+    let todayBalanceAdd = 0;
+    let todayBalanceWithdraw = 0;
+
     // Get all game sessions for the specified date
     const gameSessions = await GameSession.find({
         ...query,
@@ -766,6 +769,8 @@ export const getDailyBalanceReport = catchAsyncError(async (req, res, next) => {
     let closingBalance = openingBalance;
     if (machineTransactions.length > 0) {
         closingBalance = machineTransactions[machineTransactions.length - 1].remainingBalance || openingBalance;
+        todayBalanceAdd = machineTransactions[machineTransactions.length - 1].addedAmountToMachine || 0;
+        todayBalanceWithdraw = machineTransactions[machineTransactions.length - 1].withdrawnAmountFromMachine || 0;
     } else if (gameSessions.length > 0) {
         // If no transactions but there are game sessions, use balanceAfterGame of last session
         closingBalance = gameSessions[gameSessions.length - 1].balanceAfterGame || openingBalance;
@@ -796,7 +801,9 @@ export const getDailyBalanceReport = catchAsyncError(async (req, res, next) => {
         openingBalance: openingBalance,
         closingBalance: closingBalance,
         totalUserWinner: totalUserWinnings,
-        totalMachineWin: totalMachineWinnings
+        totalMachineWin: totalMachineWinnings,
+        todayBalanceAdd: todayBalanceAdd,
+        todayBalanceWithdraw: todayBalanceWithdraw
     };
 
     res.status(200).json({
