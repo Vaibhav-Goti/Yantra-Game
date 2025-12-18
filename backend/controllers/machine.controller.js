@@ -769,6 +769,7 @@ export const getDailyBalanceReport = catchAsyncError(async (req, res, next) => {
     let closingBalance = openingBalance;
     if (machineTransactions.length > 0) {
         // console.log('machineTransactions', machineTransactions)
+        // add all the remaining balance of the transactions
         closingBalance = machineTransactions[machineTransactions.length - 1].remainingBalance || openingBalance;
         todayBalanceAdd = machineTransactions?.reduce((sum, transaction) => sum + (transaction.addedAmountToMachine || 0), 0) || 0;
         todayBalanceWithdraw = machineTransactions?.reduce((sum, transaction) => sum + (transaction.withdrawnAmountFromMachine || 0), 0) || 0;
