@@ -768,9 +768,10 @@ export const getDailyBalanceReport = catchAsyncError(async (req, res, next) => {
     // Get closing balance (remainingBalance of last transaction on that day)
     let closingBalance = openingBalance;
     if (machineTransactions.length > 0) {
+        // console.log('machineTransactions', machineTransactions)
         closingBalance = machineTransactions[machineTransactions.length - 1].remainingBalance || openingBalance;
-        todayBalanceAdd = machineTransactions[machineTransactions.length - 1].addedAmountToMachine || 0;
-        todayBalanceWithdraw = machineTransactions[machineTransactions.length - 1].withdrawnAmountFromMachine || 0;
+        todayBalanceAdd = machineTransactions?.reduce((sum, transaction) => sum + (transaction.addedAmountToMachine || 0), 0) || 0;
+        todayBalanceWithdraw = machineTransactions?.reduce((sum, transaction) => sum + (transaction.withdrawnAmountFromMachine || 0), 0) || 0;
     } else if (gameSessions.length > 0) {
         // If no transactions but there are game sessions, use balanceAfterGame of last session
         closingBalance = gameSessions[gameSessions.length - 1].balanceAfterGame || openingBalance;
