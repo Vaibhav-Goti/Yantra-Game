@@ -14,6 +14,7 @@ import {
     reconcileMachineBalance,
     getMachineTransactionAnalytics
 } from "../utils/machineTransactionUtils.js";
+import { formatKolkataTime } from "../utils/timezoneUtils.js";
 
 // Create new machine
 export const createMachine = catchAsyncError(async (req, res, next) => {
@@ -710,7 +711,7 @@ export const getDailyBalanceReport = catchAsyncError(async (req, res, next) => {
         query.machineId = new mongoose.Types.ObjectId(machineId);
     }
     
-    // console.log('machineId', req.params);
+    // // console.log('machineId', req.params);
     const machine = await Machine.findOne({ _id: machineId });
     if (!machine) {
         return next(new ErrorHandler('Machine not found', 404));
@@ -718,7 +719,8 @@ export const getDailyBalanceReport = catchAsyncError(async (req, res, next) => {
     if (machine.status !== 'Active') {
         return next(new ErrorHandler('Machine is not active', 400));
     }
-    const isDepositAboveThreshold = machine.depositAmount > 5000;
+    const currentBalance = machine?.depositAmount;
+    // const isDepositAboveThreshold = machine.depositAmount > 5000;
     // console.log('isDepositAboveThreshold', isDepositAboveThreshold);
 
     let todayBalanceAdd = 0;
@@ -771,8 +773,22 @@ export const getDailyBalanceReport = catchAsyncError(async (req, res, next) => {
         // console.log('machineTransactions', machineTransactions)
         // add all the remaining balance of the transactions
         closingBalance = machineTransactions[machineTransactions.length - 1].remainingBalance || openingBalance;
-        todayBalanceAdd = machineTransactions?.reduce((sum, transaction) => sum + (transaction.addedAmountToMachine || 0), 0) || 0;
-        todayBalanceWithdraw = machineTransactions?.reduce((sum, transaction) => sum + (transaction.withdrawnAmountFromMachine || 0), 0) || 0;
+        todayBalanceAdd = machineTransactions?.length > 0
+        ? machineTransactions
+            .filter(tx => tx.addedAmountToMachine > 0)
+            .map(tx => ({
+              createdAt: formatKolkataTime(tx.createdAt, 'DD-MM-YYYY hh:mm a'),
+              AddedAmount: tx.addedAmountToMachine,
+            }))
+        : [];
+        todayBalanceWithdraw = machineTransactions?.length > 0
+        ? machineTransactions
+            .filter(tx => tx.withdrawnAmountFromMachine > 0)
+            .map(tx => ({
+              createdAt: formatKolkataTime(tx.createdAt, 'DD-MM-YYYY hh:mm a'),
+              WithdrawnAmount: tx.withdrawnAmountFromMachine,
+            }))
+        : [];
     } else if (gameSessions.length > 0) {
         // If no transactions but there are game sessions, use balanceAfterGame of last session
         closingBalance = gameSessions[gameSessions.length - 1].balanceAfterGame || openingBalance;
@@ -798,12 +814,13 @@ export const getDailyBalanceReport = catchAsyncError(async (req, res, next) => {
 
     // Prepare simplified response with only required fields
     const response = {
-        isDepositAboveThreshold: isDepositAboveThreshold,
-        totalBet: totalBetCount,
-        openingBalance: openingBalance,
-        closingBalance: closingBalance,
-        totalUserWinner: totalUserWinnings,
-        totalMachineWin: totalMachineWinnings,
+        // isDepositAboveThreshold: isDepositAboveThreshold,
+        // totalBet: totalBetCount,
+        currentBalance: currentBalance,
+        todayOpeningBalance: openingBalance,
+        todayClosingBalance: closingBalance,
+        // todayTotalUserWinner: totalUserWinnings,
+        todayTotalMachineWin: totalMachineWinnings,
         todayBalanceAdd: todayBalanceAdd,
         todayBalanceWithdraw: todayBalanceWithdraw
     };
