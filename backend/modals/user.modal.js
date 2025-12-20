@@ -20,14 +20,14 @@ const userSchema = new mongoose.Schema({
         default: 'Admin',
         enum: ['Admin', 'SuperAdmin', 'User'],
     },
-    refreshToken: {
-        type: String,
-        default: null,
-    },
-    expiresAt: {
-        type: Date,
-        default: null,
-    },
+    // refreshToken: {
+    //     type: String,
+    //     default: null,
+    // },
+    // expiresAt: {
+    //     type: Date,
+    //     default: null,
+    // },
     resetPasswordToken: {
         type: String,
         default: null,
@@ -36,10 +36,10 @@ const userSchema = new mongoose.Schema({
         type: Date,
         default: null,
     },
-    tokenVersion: {
-        type: Number,
-        default: 0,
-    },
+    // tokenVersion: {
+    //     type: Number,
+    //     default: 0,
+    // },
 },{timestamps: true})
 
 //hash password before saving
