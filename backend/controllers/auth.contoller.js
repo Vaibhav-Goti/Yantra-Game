@@ -5,6 +5,20 @@ import { hashPassword, verifyHashPassword } from "../utils/passwordUtils.js";
 import { generateToken, generateRefreshToken, verifyToken } from "../utils/tokenUtils.js";
 import { sendPasswordResetEmail, sendPasswordResetConfirmation } from "../utils/emailUtils.js";
 import crypto from 'crypto';
+import Session from "../modals/session.modal.js";
+
+const hashRefreshToken = (refreshToken) => {
+    return crypto.createHash('sha256').update(refreshToken).digest('hex')
+}
+
+// Set refresh token as httpOnly cookie (secure, not accessible via JavaScript)
+const cookieOptions = {
+    httpOnly: true, // Prevents JavaScript access (XSS protection)
+    secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+    sameSite: 'none', // CSRF protection
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    path: '/' // Available for all routes
+}
 
 export const login = catchAsyncError(async (req, res, next) => {
     const { email, password } = req.body
@@ -19,34 +33,35 @@ export const login = catchAsyncError(async (req, res, next) => {
     delete user.refreshToken
     delete user.expiresAt
 
-    
+
     const isPasswordMatch = await verifyHashPassword(password, isUser.password)
 
     if (!isPasswordMatch) return next(new ErrorHandler('Invalid Password!', 400))
 
     // Increment token version to invalidate all previous tokens
-    isUser.tokenVersion = (isUser.tokenVersion || 0) + 1
-    
+    // isUser.tokenVersion = (isUser.tokenVersion || 0) + 1
+
     // Generate new tokens
-    const token = generateToken({ id: isUser._id, tokenVersion: isUser.tokenVersion }, '15m')
+    const token = generateToken({ id: isUser._id }, '15m')
     const refreshToken = generateRefreshToken()
-    const refreshTokenHashed = generateToken({refreshToken}, '7d')
+    const refreshTokenHashed = hashRefreshToken(refreshToken)
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
 
     // Store new refresh token (this invalidates previous sessions)
-    isUser.refreshToken = refreshToken
-    isUser.expiresAt = expiresAt
-    await isUser.save()
+    // isUser.refreshToken = refreshToken
+    // isUser.expiresAt = expiresAt
+    // await isUser.save()
+    const session = new Session({
+        userId: isUser._id,
+        refreshTokenHashed: refreshTokenHashed,
+        userAgent: req.headers['user-agent'],
+        ipAddress: req.ip,
+        deviceInfo: req.headers['sec-ch-ua-platform'] || 'unknown',
+        expiresAt: expiresAt
+    })
+    await session.save()
 
-    // Set refresh token as httpOnly cookie (secure, not accessible via JavaScript)
-    const cookieOptions = {
-        httpOnly: true, // Prevents JavaScript access (XSS protection)
-        secure: process.env.NODE_ENV === 'production', // HTTPS only in production
-        sameSite: 'strict', // CSRF protection
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-        path: '/' // Available for all routes
-    }
-    res.cookie('refreshToken', refreshTokenHashed, cookieOptions)
+    res.cookie('refreshToken', refreshToken, cookieOptions)
 
     res.status(200).json({
         success: true,
@@ -60,56 +75,53 @@ export const login = catchAsyncError(async (req, res, next) => {
 export const refreshToken = catchAsyncError(async (req, res, next) => {
     // Get refresh token from httpOnly cookie instead of request body
     const refreshToken = req.cookies?.refreshToken
-
+    console.log(req.cookies)
+    console.log(refreshToken)
+    
     if (!refreshToken) {
         return next(new ErrorHandler('Refresh token is required!', 400))
     }
+    const refreshTokenHashed = hashRefreshToken(refreshToken)
 
     try {
+        const session = await Session.findOne({ refreshTokenHashed: refreshTokenHashed })
+        // if (!session) {
+        //     return next(new ErrorHandler('Invalid or expired refresh token!', 401))
+        // }
 
-        const decoded = verifyToken(refreshToken)
-        if (!decoded) {
+        if(!session || session.revoked || session.expiresAt < new Date()) {
+            if (session?.userId) {
+                await Session.updateMany(
+                  { userId: session.userId },
+                  { revoked: true }
+                )
+              }
             return next(new ErrorHandler('Invalid or expired refresh token!', 401))
         }
 
-        // Find all users and check if any has a matching hashed refresh token
-        const users = await User.findOne({ 
-            refreshToken: decoded.refreshToken,
-            expiresAt: { $gt: new Date() }
-        })
-
-        if (!users) {
-            return next(new ErrorHandler('Invalid or expired refresh token!', 401))
-        }   
-
-        // Increment token version to invalidate all previous tokens
-        users.tokenVersion = (users.tokenVersion || 0) + 1
-        
-        // Generate new tokens
-        const newToken = generateToken({ id: users._id, tokenVersion: users.tokenVersion }, '15m')
+        const newToken = generateToken({ id: session.userId }, '15m')
         const newRefreshToken = generateRefreshToken()
-        const newRefreshTokenHashed = generateToken({refreshToken: newRefreshToken}, '7d')
+        const newRefreshTokenHashed = hashRefreshToken(newRefreshToken)
 
-        // Update user with new refresh token
-        users.refreshToken = newRefreshToken
-        users.expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-        await users.save()
+        session.revoked = true
+        session.replacedByToken = refreshTokenHashed
+        await session.save()
 
-        // Set new refresh token as httpOnly cookie
-        const cookieOptions = {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-            path: '/'
-        }
-        res.cookie('refreshToken', newRefreshTokenHashed, cookieOptions)
+        const newSession = new Session({
+            userId: session.userId,
+            refreshTokenHashed: newRefreshTokenHashed,
+            userAgent: session.userAgent,
+            ipAddress: session.ipAddress,
+            deviceInfo: session.deviceInfo,
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+        })
+        await newSession.save()
 
-        res.status(200).json({
+        res.cookie('refreshToken', newRefreshToken, cookieOptions)
+        return res.status(200).json({
             success: true,
             message: 'Token refreshed successfully!',
             token: newToken
-            // Don't return refreshToken in response body - it's in httpOnly cookie
         })
     } catch (error) {
         return next(new ErrorHandler('Invalid or expired refresh token!', 401))
@@ -120,21 +132,14 @@ export const logout = catchAsyncError(async (req, res, next) => {
     try {
         // Get refresh token from httpOnly cookie
         const refreshToken = req.cookies?.refreshToken
-        
+
         if (refreshToken) {
             try {
-                const decoded = verifyToken(refreshToken)
-                if (decoded && decoded.refreshToken) {
-                    // Find user with matching refresh token
-                    const user = await User.findOne({ 
-                        refreshToken: decoded.refreshToken
-                    })
-
-                    if (user) {
-                        user.refreshToken = null
-                        user.expiresAt = null
-                        await user.save()
-                    }
+                const decoded = hashRefreshToken(refreshToken)
+                const session = await Session.findOne({ refreshTokenHashed: decoded })
+                if (session) {
+                    session.revoked = true
+                    await session.save()
                 }
             } catch (error) {
                 // If token is invalid, just clear the cookie
@@ -143,12 +148,7 @@ export const logout = catchAsyncError(async (req, res, next) => {
         }
 
         // Clear refresh token cookie
-        res.clearCookie('refreshToken', {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            path: '/'
-        })
+        res.clearCookie('refreshToken', cookieOptions)
 
         return res.status(200).json({
             success: true,
@@ -157,12 +157,7 @@ export const logout = catchAsyncError(async (req, res, next) => {
     } catch (error) {
         console.log('Error during logout:', error.message)
         // Clear cookie even if there's an error
-        res.clearCookie('refreshToken', {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            path: '/'
-        })
+        res.clearCookie('refreshToken', cookieOptions)
         return res.status(200).json({
             success: true,
             message: 'Logout successful!'
@@ -182,17 +177,31 @@ export const changePassword = catchAsyncError(async (req, res, next) => {
     const isPasswordMatch = await verifyHashPassword(oldPassword, user.password)
     if (!isPasswordMatch) return next(new ErrorHandler('Invalid Password!', 400))
 
-    // Increment token version to invalidate all other sessions
-    user.tokenVersion = (user.tokenVersion || 0) + 1
-    
-    // console.log('Before save - newPassword:', newPassword)
+    // Invalidate all other sessions
+    await Session.updateMany(
+        { userId: userId },
+        { revoked: true }
+    )
+
     user.password = newPassword
     await user.save()
-    // console.log('After save - user.password:', user.password)
 
     // Generate new token so user can continue their session
-    const newToken = generateToken({ id: user._id, tokenVersion: user.tokenVersion }, '15m')
+    const newToken = generateToken({ id: user._id }, '15m')
+    const newRefreshToken = generateRefreshToken()
+    const newRefreshTokenHashed = hashRefreshToken(newRefreshToken)
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    const newSession = new Session({
+        userId: user._id,
+        refreshTokenHashed: newRefreshTokenHashed,
+        userAgent: req.headers['user-agent'],
+        ipAddress: req.ip,
+        deviceInfo: req.headers['sec-ch-ua-platform'] || 'unknown',
+        expiresAt: expiresAt
+    })
+    await newSession.save()
 
+    res.cookie('refreshToken', newRefreshToken, cookieOptions)
     res.status(200).json({
         success: true,
         message: 'Password changed successfully!',
@@ -255,7 +264,6 @@ export const resetPassword = catchAsyncError(async (req, res, next) => {
 
     // Update password and invalidate all existing sessions
     user.password = newPassword
-    user.tokenVersion = (user.tokenVersion || 0) + 1
     user.resetPasswordToken = null
     user.resetPasswordExpires = null
     await user.save()
