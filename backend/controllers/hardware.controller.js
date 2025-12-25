@@ -147,6 +147,53 @@ export const stopGameSession = catchAsyncError(async (req, res, next) => {
         if (!gameSession) {
             throw new ErrorHandler('Game session not found', 404);
         }
+
+        if(gameSession.status === 'Completed') {
+            console.log("first")
+            return res.status(201).json({
+                // success: true,
+                // message: 'Game processed and stored successfully',
+                data: {
+                    // sessionId: gameSession.sessionId,
+                    // machine: {
+                    //     _id: machine._id,
+                    //     machineName: machine.machineName,
+                    //     machineNumber: machine.machineNumber,
+                    //     status: machine.status,
+                    //     remainingDeposit: machine.depositAmount
+                    // },
+                    // stopTime: stopTime,
+                    // relevantTimeFrame: {
+                    //     time: relevantTimeFrame.time,
+                    //     percentage: relevantTimeFrame.percentage
+                    // },
+                    // balanceBeforeGame: balanceBeforeGame,
+                    // balanceAfterGame: machine.depositAmount,
+                    // totalBetAmount: amountCalculation.totalBetAmount,
+                    // totalDeductedAmount: Math.abs(totatDeductedAmount),
+                    // finalAmount: Math.abs(finalAmount),
+                    // deductionPercentage: deductionPercentage,
+                    // buttonResults: amountCalculation.buttonResults.map(button => ({
+                    //     buttonNumber: button.buttonNumber,
+                    //     pressCount: button.pressCount,
+                    //     buttonAmount: button.finalAmount // Individual button amount (no deduction)
+                    // })),
+                    winners: gameSession?.winners.map(winner => ({
+                        buttonNumber: winner.buttonNumber,
+                        amount: winner.amount,
+                        payOutAmount: winner.payOutAmount,
+                        isWinner: winner.isWinner,
+                        // winnerType: winner.winnerType || 'regular'
+                    })),
+                    // unusedAmount: winners?.unusedAmount,
+                    // totalAdded: totalAdded,
+                    // adjustedDeductedAmount,
+                    // processingTime: new Date().toISOString(),
+                    // storedAt: gameSession.createdAt
+                }
+            });
+        };
+
         const machineId = gameSession.machineId;
         const buttonPresses = gameSession.buttonPresses;
 
