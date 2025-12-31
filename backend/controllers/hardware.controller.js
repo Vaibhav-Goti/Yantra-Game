@@ -208,7 +208,7 @@ export const stopGameSession = catchAsyncError(async (req, res, next) => {
             throw new ErrorHandler('Machine not found', 404);
         }
         const balanceBeforeGame = machine.depositAmount;
-        console.log('machine', machine.depositAmount)
+        // console.log('machine', machine.depositAmount)
 
         // Check if machine is active
         if (machine.status !== 'Active') {
@@ -592,6 +592,8 @@ export const stopGameSession = catchAsyncError(async (req, res, next) => {
             finalAmount: Math.abs(finalAmount),
             deductedAmount: Math.abs(totatDeductedAmount),
             unusedAmount: winners?.unusedAmount || 0,
+            // gameStopTime: now,
+            // gameStartTime: gameSession.createdAt,
             totalAdded: totalAdded || 0,
             payoutAmount: winners?.winners.reduce((sum, winner) => sum + winner.payOutAmount, 0) || 0,
             percentageDeducted: adjustedDeductedAmount,

@@ -23,3 +23,7 @@ export const getTimeFramesByMachineApi = async (params) => {
 export const updateBulkTimeFramesApi = async (data) => {
     return apiUtils('POST', '/timeframe/update-bulk', {}, data, null)
 };
+
+export const updateBulkExistingTimeFrameApi = async (data) => {
+    return apiUtils('POST', '/timeframe/update-bulk-timeframe', {}, data, null)
+}

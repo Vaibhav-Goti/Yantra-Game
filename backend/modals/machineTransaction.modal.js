@@ -66,6 +66,14 @@ const machineTransactionSchema = new mongoose.Schema({
         required: true, // mandatory to track balance after operation
         min: 0
     },
+    // gameStartTime: {
+    //     type: Date,
+    //     default: null,
+    // },
+    // gameStopTime: {
+    //     type: Date,
+    //     default: null
+    // },
     note: {
         type: String,
         trim: true
