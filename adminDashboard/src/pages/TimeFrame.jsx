@@ -10,7 +10,7 @@ import { FaRegClock, FaChevronDown, FaChevronRight, FaEdit, FaSave, FaTimes } fr
 import { Button, Input } from "../components/ui";
 import Loading, { LoadingOverlay, LoadingPage } from "../components/ui/Loading";
 import { useGetMachines } from "../hooks/useMachine";
-import { useCreateTimeFrame, useTimeFrame, useTimeFramesByMachine, useUpdateBulkTimeFrames, useUpdateTimeFrame } from "../hooks/useTimeFrame";
+import { useCreateTimeFrame, useTimeFrame, useTimeFramesByMachine, useUpdateBulkExistingTimeFrames, useUpdateBulkTimeFrames, useUpdateTimeFrame } from "../hooks/useTimeFrame";
 import moment from "moment";
 
 // Edit Time Frame Input Component
@@ -71,8 +71,8 @@ function MachineTimeFrames() {
     const [editFrame, setEditFrame] = useState(null);
     const [formData, setFormData] = useState({
         machineId: '',
-        time: '',
-        percentage: ''
+        // time: '',
+        // percentage: ''
     });
     const [errors, setErrors] = useState({});
 
@@ -82,6 +82,7 @@ function MachineTimeFrames() {
     const { mutate: updateTimeFrame, isPending: isUpdateTimeFramePending, isError: isUpdateTimeFrameError, error: updateTimeFrameError } = useUpdateTimeFrame();
     const { mutate: timeFramesByMachine, data: timeFramesByMachineData, isPending: isTimeFramesByMachinePending, isError: isTimeFramesByMachineError, error: timeFramesByMachineError } = useTimeFramesByMachine();
     const { mutate: updateBulkTimeFrames, isPending: isUpdateBulkTimeFramesPending, isError: isUpdateBulkTimeFramesError, error: updateBulkTimeFramesError } = useUpdateBulkTimeFrames();
+    const { mutate: updateBulkExistingTimeFramesMutate, isPending: isPendingUpdateBulkExistingTimeFrame, isError: isErrorUpdateBulkExistingTimeFrame, error: errorUpdateBulkExistingTimeFrames } = useUpdateBulkExistingTimeFrames()
     // console.log(timeFramesByMachineData)
 
 
@@ -256,15 +257,15 @@ function MachineTimeFrames() {
             newErrors.machineId = 'Machine is required';
         }
 
-        if (!formData.time) {
-            newErrors.time = 'Time is required';
-        }
+        // if (!formData.time) {
+        //     newErrors.time = 'Time is required';
+        // }
 
-        if (!formData.percentage) {
-            newErrors.percentage = 'Percentage is required';
-        } else if (isNaN(formData.percentage) || formData.percentage < 0 || formData.percentage > 100) {
-            newErrors.percentage = 'Percentage must be between 0 and 100';
-        }
+        // if (!formData.percentage) {
+        //     newErrors.percentage = 'Percentage is required';
+        // } else if (isNaN(formData.percentage) || formData.percentage < 0 || formData.percentage > 100) {
+        //     newErrors.percentage = 'Percentage must be between 0 and 100';
+        // }
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -296,50 +297,58 @@ function MachineTimeFrames() {
             return;
         }
 
-        const time24h = moment(formData.time, 'HH:mm', true);
-        let time24hFormatted = formData.time;
-        if (!time24h.isValid()) {
-            time24hFormatted = moment(formData.time, 'h:mm A', true).format('HH:mm');
-        } else {
-            time24hFormatted = formData.time;
-        }
+        // const time24h = moment(formData.time, 'HH:mm', true);
+        // let time24hFormatted = formData.time;
+        // if (!time24h.isValid()) {
+        //     time24hFormatted = moment(formData.time, 'h:mm A', true).format('HH:mm');
+        // } else {
+        //     time24hFormatted = formData.time;
+        // }
 
 
 
         // Native time input already provides HH:mm format, so use directly
         const submitData = {
             machineId: editFrame ? editFrame.machineId._id : formData.machineId,
-            time: time24hFormatted, // Already in HH:mm format from time input
-            percentage: Number(formData.percentage)
+            // time: time24hFormatted, // Already in HH:mm format from time input
+            // percentage: Number(formData.percentage)
         };
 
-        if (editFrame) {
-            submitData.id = editFrame._id;
-            // Handle edit logic here
-            // console.log('Edit time frame:', submitData);
-            updateTimeFrame(submitData, {
-                onSuccess: () => {
-                    setShowModal(false);
-                    setEditFrame(null);
-                    setFormData({ machineId: '', time: '', percentage: '' });
-                    setErrors({});
-                },
-            });
-        } else {
-            // Handle create
-            // console.log('Create time frame:', submitData);
-            createTimeFrame(submitData, {
-                onSuccess: () => {
-                    setShowModal(false);
-                    setEditFrame(null);
-                    setFormData({ machineId: '', time: '', percentage: '' });
-                    setErrors({});
-                },
-                onError: (error) => {
-                    console.error('Error creating time frame:', error);
-                }
-            });
-        }
+        updateBulkExistingTimeFramesMutate(submitData, {
+            onSuccess: () => {
+                setShowModal(false);
+                // setEditFrame(null);
+                setFormData({ machineId: '' });
+                setErrors({});
+            },
+        })
+        // if (editFrame) {
+        //     submitData.id = editFrame._id;
+        //     // Handle edit logic here
+        //     // console.log('Edit time frame:', submitData);
+        //     updateTimeFrame(submitData, {
+        //         onSuccess: () => {
+        //             setShowModal(false);
+        //             setEditFrame(null);
+        //             setFormData({ machineId: '', time: '', percentage: '' });
+        //             setErrors({});
+        //         },
+        //     });
+        // } else {
+        //     // Handle create
+        //     // console.log('Create time frame:', submitData);
+        //     createTimeFrame(submitData, {
+        //         onSuccess: () => {
+        //             setShowModal(false);
+        //             setEditFrame(null);
+        //             setFormData({ machineId: '', time: '', percentage: '' });
+        //             setErrors({});
+        //         },
+        //         onError: (error) => {
+        //             console.error('Error creating time frame:', error);
+        //         }
+        //     });
+        // }
     };
 
     // Handle modal open/close
@@ -369,7 +378,7 @@ function MachineTimeFrames() {
                             onClick={() => setShowModal(true)}
                             className="w-full sm:w-auto px-3 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700"
                         >
-                            + Add Time Frame
+                            Edit Time Frames
                         </Button>
                     </div>
                 </CardHeader>
@@ -711,10 +720,10 @@ function MachineTimeFrames() {
 
                 <ModalBody>
                     {/* API Error Display */}
-                    {isCreateTimeFrameError && (
+                    {isErrorUpdateBulkExistingTimeFrame && (
                         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
                             <p className="text-red-600 text-sm">
-                                {createTimeFrameError?.message || 'Failed to save time frame. Please try again.'}
+                                {errorUpdateBulkExistingTimeFrames?.message || 'Failed to save time frame. Please try again.'}
                             </p>
                         </div>
                     )}
@@ -767,7 +776,7 @@ function MachineTimeFrames() {
               </div>
             </div> */}
                         {/* Time Range */}
-                        <div>
+                        {/* <div>
                             <label className="block text-sm font-medium mb-1">Time</label>
                             <Input
                                 type="time"
@@ -784,11 +793,11 @@ function MachineTimeFrames() {
                             {errors.time && (
                                 <p className="text-red-500 text-sm mt-1">{errors.time}</p>
                             )}
-                        </div>
+                        </div> */}
 
 
                         {/* Usage % */}
-                        <div>
+                        {/* <div>
                             <label className="block text-sm font-medium mb-1">Percentage %</label>
                             <Input
                                 type="number"
@@ -803,7 +812,7 @@ function MachineTimeFrames() {
                             {errors.percentage && (
                                 <p className="text-red-500 text-sm mt-1">{errors.percentage}</p>
                             )}
-                        </div>
+                        </div> */}
                     </form>
                 </ModalBody>
 
@@ -813,7 +822,7 @@ function MachineTimeFrames() {
                         variant="secondary"
                         onClick={handleModalClose}
                         className="w-full sm:w-auto px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300 text-sm"
-                        disabled={isCreateTimeFramePending || isUpdateTimeFramePending}
+                        disabled={isPendingUpdateBulkExistingTimeFrame || isUpdateTimeFramePending}
                     >
                         Cancel
                     </Button>
@@ -821,10 +830,10 @@ function MachineTimeFrames() {
                         type="submit"
                         form="timeFrameForm"
                         className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
-                        disabled={isCreateTimeFramePending || isUpdateTimeFramePending}
-                        loading={isCreateTimeFramePending || isUpdateTimeFramePending}
+                        disabled={isPendingUpdateBulkExistingTimeFrame || isUpdateTimeFramePending}
+                        loading={isPendingUpdateBulkExistingTimeFrame || isUpdateTimeFramePending}
                     >
-                        {editFrame ? 'Update' : 'Add'}
+                        {editFrame ? 'Update' : 'Update TimeFrames'}
                     </Button>
                 </ModalFooter>
             </Modal>

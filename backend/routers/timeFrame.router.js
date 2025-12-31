@@ -17,7 +17,8 @@ import {
     getCurrentTimeFrameForMachine,
     getTimeFramesByPercentageRange,
     getTimeFramesWithAnalysis,
-    updateBulkTimeFrames
+    updateBulkTimeFrames,
+    updateExistingBulkTimeFrames
 } from '../controllers/timeFrame.controller.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
 
@@ -31,6 +32,7 @@ router.route('/get/:id').get(authMiddleware, getTimeFrameById);
 router.route('/update').post(authMiddleware, reqBodyValidator(timeFrameUpdateValidation), updateTimeFrame);
 router.route('/delete').post(authMiddleware, reqBodyValidator(timeFrameDeleteValidation), deleteTimeFrame);
 router.route('/update-bulk').post(authMiddleware, reqBodyValidator(timeFrameUpdateBulkValidation), updateBulkTimeFrames);
+router.route('/update-bulk-timeframe').post(authMiddleware, updateExistingBulkTimeFrames)
 
 // Machine-specific routes
 router.route('/by-machine').post(authMiddleware, reqBodyValidator(timeFrameByMachineValidation), getTimeFramesByMachine);

@@ -2,15 +2,16 @@ import catchAsyncError from "../middlewares/catchAsyncError.js";
 import TimeFrame from "../modals/timeFrame.modal.js";
 import Machine from "../modals/machine.modal.js";
 import ErrorHandler from "../utils/errorHandler.js";
-import { 
-    isValidTimeFormat, 
-    getCurrentTimeHHMM, 
-    formatTime, 
+import {
+    isValidTimeFormat,
+    getCurrentTimeHHMM,
+    formatTime,
     isTimeBetween,
     calculateTimeDifference,
-    getTimeRanges 
+    getTimeRanges
 } from "../utils/timeUtils.js";
 import moment from "moment";
+import mongoose from "mongoose";
 
 // Create new timeframe
 export const createTimeFrame = catchAsyncError(async (req, res, next) => {
@@ -29,11 +30,11 @@ export const createTimeFrame = catchAsyncError(async (req, res, next) => {
     }
 
     // Check if timeframe already exists for the same machine and time
-    const existingTimeFrame = await TimeFrame.findOne({ 
-        machineId, 
-        time 
+    const existingTimeFrame = await TimeFrame.findOne({
+        machineId,
+        time
     });
-    
+
     if (existingTimeFrame) {
         return next(new ErrorHandler('TimeFrame already exists for this machine at this time', 400));
     }
@@ -59,7 +60,7 @@ export const createTimeFrame = catchAsyncError(async (req, res, next) => {
 // Get all timeframes
 export const getAllTimeFrames = catchAsyncError(async (req, res, next) => {
     const { machineId, page = 1, limit = 10 } = req.query;
-    
+
     // Build filter object
     const filter = {};
     if (machineId) {
@@ -218,14 +219,14 @@ export const getCurrentTimeFrameForMachine = catchAsyncError(async (req, res, ne
     }
 
     const currentTime = getCurrentTimeHHMM();
-    
+
     // Find timeframe that matches current time or closest previous time
-    const timeFrame = await TimeFrame.findOne({ 
+    const timeFrame = await TimeFrame.findOne({
         machineId,
         time: { $lte: currentTime }
     })
-    .populate('machineId', 'machineName machineNumber status location')
-    .sort({ time: -1 });
+        .populate('machineId', 'machineName machineNumber status location')
+        .sort({ time: -1 });
 
     if (!timeFrame) {
         return res.status(200).json({
@@ -252,7 +253,7 @@ export const getTimeFramesByPercentageRange = catchAsyncError(async (req, res, n
     const filter = {
         percentage: { $gte: parseInt(minPercentage), $lte: parseInt(maxPercentage) }
     };
-    
+
     if (machineId) {
         filter.machineId = machineId;
     }
@@ -295,12 +296,12 @@ export const getTimeFramesWithAnalysis = catchAsyncError(async (req, res, next) 
     // Analyze timeframes using Moment.js
     const timeRanges = getTimeRanges(timeFrames);
     const currentTime = getCurrentTimeHHMM();
-    
+
     // Find current active timeframe
     const currentTimeFrame = timeRanges.find(timeframe => {
         const nextIndex = timeRanges.indexOf(timeframe) + 1;
         const nextTimeFrame = timeRanges[nextIndex];
-        
+
         if (nextTimeFrame) {
             return isTimeBetween(currentTime, timeframe.time, nextTimeFrame.time);
         } else {
@@ -355,16 +356,80 @@ export const updateBulkTimeFrames = catchAsyncError(async (req, res, next) => {
 
     const bulkOps = timeFrames.map(tf => ({
         updateOne: {
-          filter: { _id: tf._id, machineId },
-          update: { $set: { percentage: tf.percentage } }
+            filter: { _id: tf._id, machineId },
+            update: { $set: { percentage: tf.percentage } }
         }
-      }));
-      
-      const result = await TimeFrame.bulkWrite(bulkOps);
+    }));
+
+    const result = await TimeFrame.bulkWrite(bulkOps);
 
     res.status(200).json({
         success: true,
         message: 'TimeFrames updated successfully',
         data: result
     });
+});
+
+// update existing bulk timeframes
+export const updateExistingBulkTimeFrames = catchAsyncError(async (req, res, next) => {
+    const { machineId } = req.body;
+
+    if (!machineId) {
+        return next(new ErrorHandler('Machine ID is required', 400));
+    }
+
+    const session = await mongoose.startSession();
+
+    try {
+        session.startTransaction();
+
+        // 1️⃣ Check machine exists
+        const machine = await Machine.findById(machineId).session(session);
+        if (!machine) {
+            throw new ErrorHandler('Machine not found!', 404);
+        }
+
+        // 2️⃣ Fetch existing timeframes
+        const existingFrames = await TimeFrame.find({ machineId }).session(session);
+        if (!existingFrames.length) {
+            throw new ErrorHandler('No time frames found for this machine', 400);
+        }
+
+        // 3️⃣ Prepare new 5-min time frames
+        const newTimeFrames = [];
+
+        for (let h = 0; h < 24; h++) {
+            for (let m = 0; m < 60; m += 5) {
+                const time = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+
+                newTimeFrames.push({
+                    machineId,
+                    time,
+                    percentage: 10
+                });
+            }
+        }
+
+        // 4️⃣ Bulk replace (delete + insert)
+        await TimeFrame.deleteMany({ machineId }).session(session);
+        await TimeFrame.insertMany(newTimeFrames, { session });
+
+
+        await session.commitTransaction();
+
+        res.status(200).json({
+            success: true,
+            message: 'Time frames updated successfully',
+            data: {
+                machineId,
+                totalFrames: newTimeFrames.length,
+                percentage: 10
+            }
+        });
+    } catch (error) {
+        await session.abortTransaction();
+        return next(error);
+    } finally {
+        await session.endSession();
+    }
 });
