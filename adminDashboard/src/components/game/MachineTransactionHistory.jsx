@@ -8,7 +8,7 @@ import { useGetMachines } from '../../hooks/useMachine';
 import { useGetMachineTransactionHistory } from '../../hooks/useMachineTransaction';
 import { generateTransactionHistoryPDF } from '../../utils/pdfUtils';
 import { tostMessage } from '../toastMessage';
-import { formatDateTime } from '../../utils/timeUtils';
+import { formatDateTime, formatTime } from '../../utils/timeUtils';
 import { getMachineTransactionHistoryApi } from '../../apis/machineTransactionApis';
 
 const MachineTransactionHistory = () => {
@@ -132,6 +132,8 @@ const MachineTransactionHistory = () => {
           </div>
         ),
        },
+      { key: 'gameStartTime', label: 'Game Start Time' },
+      { key: 'gameStopTime', label: 'Game Stop Time' },
       // { key: 'unusedAmount', label: 'Unused Amount' },
       // { key: 'totalAdded', label: 'Total Added' },
       { key: 'profit', label: 'Profit' },
@@ -140,7 +142,9 @@ const MachineTransactionHistory = () => {
     ];
 
     // console.log(transactions);
-    const data = transactions.map(transaction => ({
+    const data = transactions.map(transaction => {
+      // console.log(transaction);
+      return {
       ...transaction,
       machineName: transaction?.machineId?.machineName,
       addedAmountToMachine: `₹${transaction.addedAmountToMachine || 0}`,
@@ -156,8 +160,10 @@ const MachineTransactionHistory = () => {
       profit: `₹${Math.max(transaction.totalBetAmount - transaction.payoutAmount, 0) || 0}`,
       remainingBalance: `₹${transaction.remainingBalance || 0}`,
       note: transaction.note,
-      createdAt: formatDateTime(transaction.createdAt)
-    }));
+      createdAt: formatDateTime(transaction.createdAt),
+      gameStartTime: transaction?.gameStartTime ? formatTime(transaction?.gameStartTime) : '-',
+      gameStopTime: transaction?.gameStopTime ? formatTime(transaction?.gameStopTime) : '-'
+    }});
 
     return <Table columns={columns} data={data} />;
   };

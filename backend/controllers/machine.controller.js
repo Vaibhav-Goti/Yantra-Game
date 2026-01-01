@@ -324,7 +324,7 @@ export const getMachineTransactionHistory = catchAsyncError(async (req, res, nex
 
     const query = {};
     if (machineId) {
-        query.machineId = machineId;
+        query.machineId = new mongoose.Types.ObjectId(machineId);
     }
 
     // Build filter object
@@ -352,25 +352,114 @@ export const getMachineTransactionHistory = catchAsyncError(async (req, res, nex
         }
     }
 
-    // Calculate pagination
-    const skip = (page - 1) * limit;
+    const pageNum = Number(page);
+    const limitNum = Number(limit);
 
-    const transactions = await MachineTransaction.find(filter)
-        .populate('machineId', 'machineName machineNumber')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(parseInt(limit));
+    const usePagination =
+            !isNaN(pageNum) &&
+            !isNaN(limitNum) &&
+            pageNum > 0 &&
+            limitNum > 0;
+
+    const skip = usePagination ? (pageNum - 1) * limitNum : 0;
+
+
+    const pipeline = [
+        { $match: filter },
+        { $sort: { createdAt: -1 } }
+      ];
+
+    if (usePagination) {
+        pipeline.push({ $skip: skip }, { $limit: limitNum });
+    }
+
+    pipeline.push(
+        // 🔗 Lookup GameSession
+        {
+            $lookup: {
+                from: 'gamesessions',
+                localField: 'sessionId',
+                foreignField: 'sessionId',
+                as: 'gameSession'
+            }
+        },
+        // 🧠 Attach start/end time
+        {
+            $addFields: {
+                gameStartTime: { $arrayElemAt: ['$gameSession.createdAt', 0] },
+                gameStopTime: { $arrayElemAt: ['$gameSession.endTime', 0] }
+            }
+        },
+        { $unset: 'gameSession' },
+        // populate machine
+        {
+            $lookup: {
+                from: 'machines',
+                localField: 'machineId',
+                foreignField: '_id',
+                as: 'machineId'
+            }
+        },
+        { $unwind: '$machineId' }
+    );
+    // const pipeline = [
+    //     { $match: filter },
+
+    //     // 🔗 Lookup GameSession
+    //     {
+    //         $lookup: {
+    //             from: 'gamesessions',
+    //             localField: 'sessionId',
+    //             foreignField: 'sessionId',
+    //             as: 'gameSession'
+    //         }
+    //     },
+
+    //     // 🧠 Attach start/end time
+    //     {
+    //         $addFields: {
+    //             gameStartTime: { $arrayElemAt: ['$gameSession.createdAt', 0] },
+    //             gameStopTime: { $arrayElemAt: ['$gameSession.endTime', 0] }
+    //         }
+    //     },
+
+    //     { $unset: 'gameSession' },
+
+    //     { $sort: { createdAt: -1 } },
+    //     { $skip: skip },
+    //     { $limit: parseInt(limit) },
+
+    //     // populate machine
+    //     {
+    //         $lookup: {
+    //             from: 'machines',
+    //             localField: 'machineId',
+    //             foreignField: '_id',
+    //             as: 'machineId'
+    //         }
+    //     },
+    //     { $unwind: '$machineId' }
+    // ];
+
+    const data = await MachineTransaction.aggregate(pipeline);
+    // console.log(data)
+
+    // const transactions = await MachineTransaction.find(filter)
+    //     .populate('machineId', 'machineName machineNumber')
+    //     .sort({ createdAt: -1 })
+    //     .skip(skip)
+    //     .limit(parseInt(limit));
 
     const totalTransactions = await MachineTransaction.countDocuments(filter);
 
     res.status(200).json({
         success: true,
         message: 'Machine transaction history fetched successfully',
-        count: transactions.length,
+        count: data.length,
         totalTransactions,
         currentPage: parseInt(page),
         totalPages: Math.ceil(totalTransactions / limit),
-        data: transactions
+        data: data
     });
 });
 
