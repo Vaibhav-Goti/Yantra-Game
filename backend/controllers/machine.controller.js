@@ -442,7 +442,7 @@ export const getMachineTransactionHistory = catchAsyncError(async (req, res, nex
     // ];
 
     const data = await MachineTransaction.aggregate(pipeline);
-    console.log(data)
+    // console.log(data)
 
     // const transactions = await MachineTransaction.find(filter)
     //     .populate('machineId', 'machineName machineNumber')
