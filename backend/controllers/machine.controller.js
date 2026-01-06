@@ -899,7 +899,7 @@ export const getDailyBalanceReport = catchAsyncError(async (req, res, next) => {
     // Calculate total machine winnings
     // Machine profit = Money bet by users - Money won by users
     // The deductedAmount is already part of the machine's profit (house edge)
-    const totalMachineWinnings = totalBetAmount - totalUserWinnings;
+    const totalMachineWinnings = openingBalance - closingBalance;
 
     // Prepare simplified response with only required fields
     const response = {
